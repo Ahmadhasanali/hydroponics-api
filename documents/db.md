@@ -5,6 +5,9 @@
 - id
 - name
 - password
+- is_admin
+- remember_token
+- timestamps(created_at, updated_at)
 
 ## farms
 
