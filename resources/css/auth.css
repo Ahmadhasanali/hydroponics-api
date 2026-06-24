@@ -1,0 +1,236 @@
+:root {
+    --primary-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    --bg-gradient: radial-gradient(circle at 10% 20%, rgba(4, 32, 26, 1) 0%, rgba(9, 12, 11, 1) 90%);
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-focus-border: rgba(56, 239, 125, 0.4);
+    --text-muted: #8e9a97;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--bg-gradient);
+    color: #ffffff;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Decorative Abstract Background Shapes */
+.bg-shape-1 {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(56, 239, 125, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+    top: -10%;
+    left: -10%;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.bg-shape-2 {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(17, 153, 142, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+    bottom: -15%;
+    right: -10%;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* Card Styling - Glassmorphism */
+.login-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 3rem 2.5rem;
+    width: 100%;
+    max-width: 460px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+    position: relative;
+    animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.brand-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    background: var(--primary-gradient);
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
+    color: #0b251e;
+    font-size: 2rem;
+    box-shadow: 0 8px 24px rgba(56, 239, 125, 0.25);
+}
+
+.login-title {
+    font-weight: 700;
+    font-size: 1.75rem;
+    letter-spacing: -0.5px;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(to right, #ffffff, #dcdcdc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.login-subtitle {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    margin-bottom: 2.5rem;
+}
+
+/* Form Inputs Custom Styling */
+.form-label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #cdd6d4;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.2px;
+}
+
+.input-group-custom {
+    position: relative;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    transition: all 0.25s ease;
+}
+
+.input-group-custom:focus-within {
+    border-color: var(--glass-focus-border);
+    box-shadow: 0 0 0 4px rgba(56, 239, 125, 0.15);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.input-group-custom .form-control {
+    background: transparent !important;
+    border: none;
+    color: #ffffff;
+    font-size: 0.95rem;
+    padding: 0.8rem 1rem 0.8rem 0.8rem;
+    min-height: 48px;
+}
+
+.input-group-custom .form-control:focus {
+    box-shadow: none;
+    outline: none;
+}
+
+.input-group-custom .input-group-text {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding-left: 1.1rem;
+    padding-right: 0.5rem;
+}
+
+.input-group-custom .btn-toggle-password {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding-right: 1.1rem;
+    transition: color 0.2s ease;
+}
+
+.input-group-custom .btn-toggle-password:hover {
+    color: #ffffff;
+}
+
+/* Custom Checkbox */
+.form-check-input {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--glass-border);
+    width: 1.1rem;
+    height: 1.1rem;
+    cursor: pointer;
+}
+
+.form-check-input:checked {
+    background-image: var(--primary-gradient);
+    border-color: #38ef7d;
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 4px rgba(56, 239, 125, 0.15);
+    border-color: var(--glass-focus-border);
+}
+
+.form-check-label {
+    font-size: 0.9rem;
+    color: #cdd6d4;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Submit Button Custom Styling */
+.btn-submit {
+    background: var(--primary-gradient);
+    border: none;
+    color: #04201a;
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 0.85rem;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    width: 100%;
+    min-height: 48px;
+    box-shadow: 0 8px 24px rgba(56, 239, 125, 0.15);
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(56, 239, 125, 0.3);
+    filter: brightness(1.05);
+}
+
+.btn-submit:active {
+    transform: translateY(0);
+}
+
+.btn-submit:disabled {
+    background: var(--text-muted);
+    color: #1e2825;
+    box-shadow: none;
+    transform: none;
+}
+
+/* Input Validation Styles */
+.validation-error-msg {
+    font-size: 0.8rem;
+    color: #ff6b6b;
+    margin-top: 0.35rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.has-error {
+    border-color: rgba(255, 107, 107, 0.5) !important;
+}
+
+.has-error:focus-within {
+    border-color: #ff6b6b !important;
+    box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.15) !important;
+}
