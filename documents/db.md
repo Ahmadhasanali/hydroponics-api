@@ -12,21 +12,30 @@
 ## farms
 
 - id
-- user_id
+- created_by
 - name
 - address
 - description
+- timestamps(created_at, updated_at)
+
+## farm_users
+
+- id
+- farm_id
+- user_id
+- role -- owner, manager, operator
+- timestamps(created_at, updated_at)
 
 ## tanks
 
 - id
 - farm_id
+- created_by
 - name
 - capacity_liter
 - notes
 - is_active
-- created_at
-- updated_at
+- timestamps(created_at, updated_at)
 
 ---
 
@@ -34,15 +43,13 @@
 
 - id
 - user_id
-- farm_id
 - tank_id
 - log_date
 - ppm
 - ph
 - water_temperature
 - notes
-- created_at
-- updated_at
+- timestamps(created_at, updated_at)
 
 ---
 
@@ -57,8 +64,7 @@
 - nutrient_a_ml
 - nutrient_b_ml
 - notes
-- created_at
-- updated_at
+- timestamps(created_at, updated_at)
 
 ---
 
@@ -66,7 +72,6 @@
 
 - id
 - user_id
-- farm_id
 - tank_id
 - log_date
 - ph_before
@@ -81,6 +86,7 @@
 ## activity_logs
 
 - id
+- farm_id
 - user_id
 - action
 - entity_type

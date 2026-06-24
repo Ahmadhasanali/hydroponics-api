@@ -12,6 +12,9 @@ A hydroponic NFT farm management application designed to record daily operationa
 
 - [ ] Authentication (Login)
     - Required to identify which user created or modified records.
+- [ ] Farm Management
+- [ ] Sharing Farm
+- [ ] Tanks Management
 - [ ] Daily PPM Monitoring
 - [ ] Daily pH Monitoring
 - [ ] Nutrient Addition Logging (AB Mix)

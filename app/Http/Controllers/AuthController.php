@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Core\Application\DTOs\LoginRequestDTO;
 use App\Core\Application\UseCases\LoginUseCase;
 use App\Http\Requests\LoginRequest;
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
