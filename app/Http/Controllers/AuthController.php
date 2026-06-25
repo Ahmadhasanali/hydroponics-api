@@ -38,7 +38,7 @@ class AuthController extends Controller
         $response = $this->loginUseCase->execute($dto);
 
         if ($response->success) {
-            return redirect()->intended('/');
+            return redirect()->route('dashboard');
         }
 
         return back()
