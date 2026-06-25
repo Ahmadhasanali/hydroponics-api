@@ -7,3 +7,29 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* ── Desktop sidebar collapsed (icon-only) state ─────────────────────── */
+@media (min-width: 1024px) {
+    #sidebar.sidebar-collapsed {
+        width: 68px;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    /* Hide text labels when collapsed */
+    #sidebar.sidebar-collapsed .sidebar-text {
+        display: none;
+    }
+
+    /* Centre the nav icons when collapsed */
+    #sidebar.sidebar-collapsed .sidebar-nav-link {
+        justify-content: center;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    /* Centre logo icon when collapsed */
+    #sidebar.sidebar-collapsed .lg\:flex.lg\:items-center.lg\:gap-3.lg\:shrink-0 {
+        justify-content: center;
+    }
+}
