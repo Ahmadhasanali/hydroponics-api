@@ -79,6 +79,10 @@
                     <i class="bi bi-eye" id="toggleIcon"></i>
                 </button>
             </div>
+            <div class="validation-error-msg d-none" id="passwordClientError" aria-live="polite">
+                <i class="bi bi-info-circle-fill"></i>
+                <span>Kata sandi wajib diisi.</span>
+            </div>
             @error('password')
                 <div class="validation-error-msg">
                     <i class="bi bi-info-circle-fill"></i>
