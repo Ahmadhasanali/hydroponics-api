@@ -18,6 +18,18 @@ class User extends Authenticatable
 
     use Notifiable;
 
+    public const NAME = 'name';
+
+    public const PASSWORD = 'password';
+
+    public const IS_ADMIN = 'is_admin';
+
+    public const REMEMBER_TOKEN = 'remember_token';
+
+    public const created_at = 'created_at';
+
+    public const updated_at = 'updated_at';
+
     /**
      * Get the attributes that should be cast.
      *

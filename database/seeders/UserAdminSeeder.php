@@ -16,10 +16,23 @@ class UserAdminSeeder extends Seeder
      */
     public function run(): void
     {
-        User::factory()->create([
-            'name' => 'superadmin',
-            'password' => Hash::make('password123#@!'),
-            'is_admin' => true,
-        ]);
+        $existingAdmins = User::query()->where('name', 'superadmin')->get();
+
+        if (count($existingAdmins) === 0) {
+            $this->createAdmin();
+        } else {
+            User::query()->where(User::IS_ADMIN, true)->delete();
+            $this->run();
+        }
+    }
+
+    private function createAdmin(): void
+    {
+        $user = [
+            User::NAME => 'superadmin',
+            User::PASSWORD => Hash::make('password'),
+            User::IS_ADMIN => true,
+        ];
+        User::factory()->create($user);
     }
 }
