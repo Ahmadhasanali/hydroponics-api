@@ -16,14 +16,13 @@ class UserAdminSeeder extends Seeder
      */
     public function run(): void
     {
-        $existingAdmins = User::query()->where('name', 'superadmin')->get();
+        $adminCount = User::query()->where('name', 'superadmin')->count();
 
-        if (count($existingAdmins) === 0) {
-            $this->createAdmin();
-        } else {
+        if ($adminCount > 0) {
             User::query()->where(User::IS_ADMIN, true)->delete();
-            $this->run();
         }
+
+        $this->createAdmin();
     }
 
     private function createAdmin(): void
