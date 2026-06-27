@@ -19,7 +19,7 @@ class UserAdminSeeder extends Seeder
         $adminCount = User::query()->where('name', 'superadmin')->count();
 
         if ($adminCount > 0) {
-            User::query()->where(User::IS_ADMIN, true)->delete();
+            User::query()->where('is_admin', true)->delete();
         }
 
         $this->createAdmin();
@@ -27,11 +27,9 @@ class UserAdminSeeder extends Seeder
 
     private function createAdmin(): void
     {
-        $user = [
-            User::NAME => 'superadmin',
-            User::PASSWORD => Hash::make('password'),
-            User::IS_ADMIN => true,
-        ];
-        User::factory()->create($user);
+        User::factory()->admin()->create([
+            'name' => 'superadmin',
+            'password' => Hash::make('password'),
+        ]);
     }
 }

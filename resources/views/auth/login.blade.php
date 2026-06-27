@@ -27,7 +27,7 @@
             </div>
         @endif
 
-        <form action="{{ url('/login') }}" method="POST" id="loginForm" class="mt-8 space-y-5" novalidate>
+        <form action="{{ route('login') }}" method="POST" id="loginForm" class="mt-8 space-y-5" novalidate>
             @csrf
 
             <div>

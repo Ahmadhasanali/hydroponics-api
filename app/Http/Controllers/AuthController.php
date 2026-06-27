@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Core\Application\DTOs\LoginRequestDTO;
-use App\Core\Application\UseCases\LoginUseCase;
 use App\Http\Requests\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,10 +10,6 @@ use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    public function __construct(
-        protected LoginUseCase $loginUseCase
-    ) {}
-
     /**
      * Show the login form.
      */
@@ -25,29 +19,28 @@ class AuthController extends Controller
     }
 
     /**
-     * Handle login submission.
+     * Handle an authentication attempt.
      */
     public function login(LoginRequest $request): RedirectResponse
     {
-        $dto = new LoginRequestDTO(
-            username: $request->validated('username'),
-            password: $request->validated('password'),
-            remember: $request->boolean('remember')
-        );
+        $credentials = [
+            'name' => $request->string('username')->toString(),
+            'password' => $request->string('password')->toString(),
+        ];
 
-        $response = $this->loginUseCase->execute($dto);
-
-        if ($response->success) {
-            return redirect()->route('dashboard');
+        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+            return back()
+                ->withInput($request->only('username', 'remember'))
+                ->withErrors(['username' => __('Username atau password salah.')]);
         }
 
-        return back()
-            ->withInput($request->only('username', 'remember'))
-            ->withErrors(['username' => $response->errorMessage]);
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('dashboard'));
     }
 
     /**
-     * Log the user out.
+     * Log the user out of the application.
      */
     public function logout(Request $request): RedirectResponse
     {
@@ -56,6 +49,6 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/login');
+        return redirect()->route('login');
     }
 }

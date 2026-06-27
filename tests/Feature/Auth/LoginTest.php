@@ -3,18 +3,19 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class LoginTest extends TestCase
 {
-    use RefreshDatabase;
+    use LazilyRefreshDatabase;
 
     public function test_login_screen_can_be_rendered(): void
     {
-        $response = $this->get('/login');
+        $response = $this->get(route('login'));
 
-        $response->assertStatus(200);
+        $response->assertOk();
         $response->assertSee('Selamat Datang');
     }
 
@@ -22,26 +23,26 @@ class LoginTest extends TestCase
     {
         $user = User::factory()->create([
             'name' => 'aliusername',
-            'password' => bcrypt('password123'),
+            'password' => Hash::make('password123'),
         ]);
 
-        $response = $this->post('/login', [
+        $response = $this->post(route('login'), [
             'username' => 'aliusername',
             'password' => 'password123',
         ]);
 
         $this->assertAuthenticatedAs($user);
-        $response->assertRedirect('/dashboard');
+        $response->assertRedirect(route('dashboard'));
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void
     {
-        $user = User::factory()->create([
+        User::factory()->create([
             'name' => 'aliusername',
-            'password' => bcrypt('password123'),
+            'password' => Hash::make('password123'),
         ]);
 
-        $response = $this->post('/login', [
+        $this->post(route('login'), [
             'username' => 'aliusername',
             'password' => 'wrong-password',
         ]);
@@ -49,13 +50,41 @@ class LoginTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_users_can_not_authenticate_with_unknown_username(): void
+    {
+        $this->post(route('login'), [
+            'username' => 'nobody',
+            'password' => 'password123',
+        ]);
+
+        $this->assertGuest();
+    }
+
+    public function test_login_redirects_back_with_errors_on_failure(): void
+    {
+        $response = $this->post(route('login'), [
+            'username' => 'nobody',
+            'password' => 'wrong-password',
+        ]);
+
+        $response->assertSessionHasErrors('username');
+        $response->assertRedirect(url()->previous());
+    }
+
+    public function test_username_and_password_are_required(): void
+    {
+        $response = $this->post(route('login'), []);
+
+        $response->assertSessionHasErrors(['username', 'password']);
+    }
+
     public function test_users_can_logout(): void
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->post('/logout');
+        $response = $this->actingAs($user)->post(route('logout'));
 
         $this->assertGuest();
-        $response->assertRedirect('/login');
+        $response->assertRedirect(route('login'));
     }
 }
