@@ -97,6 +97,6 @@ class UserTest extends TestCase
         $response = $this->delete(route('user.destroy', $user->id));
 
         $response->assertRedirect(route('user.index'));
-        $this->assertSoftDeleted('users', $user);
+        $this->assertSoftDeleted($user);
     }
 }
