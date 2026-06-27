@@ -31,5 +31,3 @@ auth.json
 
 .agents/*
 skills-lock.json
-
-composer.lock
