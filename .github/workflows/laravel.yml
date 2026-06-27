@@ -23,6 +23,8 @@ jobs:
 
       - run: composer install --prefer-dist --no-interaction
 
+      - run: composer update --prefer-dist --no-interaction
+
       - run: npm ci
 
       - run: npm run build
