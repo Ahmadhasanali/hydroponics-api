@@ -22,6 +22,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->loadMigrationsFrom(
+            [
+                database_path('migrations/User'),
+                database_path('migrations'),
+            ],
+        );
         RateLimiter::for('login', function (Request $request) {
             return [
                 Limit::perMinute(5)->by($request->input('username').'|'.$request->ip()),
