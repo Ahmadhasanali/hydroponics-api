@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Farm;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,7 +19,10 @@ class FarmFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'created_by' => User::factory(),
+            'name' => fake()->company(),
+            'address' => fake()->address(),
+            'description' => fake()->sentence(),
         ];
     }
 }

@@ -7,7 +7,7 @@
 - password
 - is_admin
 - remember_token
-- timestamps(created_at, updated_at)
+- timestamps(created_at, updated_at, deleted_at)
 
 ## farms
 
@@ -16,7 +16,7 @@
 - name
 - address
 - description
-- timestamps(created_at, updated_at)
+- timestamps(created_at, updated_at, deleted_at)
 
 ## farm_users
 
@@ -24,7 +24,7 @@
 - farm_id
 - user_id
 - role -- owner, manager, operator
-- timestamps(created_at, updated_at)
+- timestamps(created_at, updated_at, deleted_at)
 
 ## tanks
 
@@ -35,7 +35,7 @@
 - capacity_liter
 - notes
 - is_active
-- timestamps(created_at, updated_at)
+- timestamps(created_at, updated_at, deleted_at)
 
 ---
 
@@ -49,7 +49,7 @@
 - ph
 - water_temperature
 - notes
-- timestamps(created_at, updated_at)
+- timestamps(created_at, updated_at, deleted_at)
 
 ---
 
@@ -64,7 +64,7 @@
 - nutrient_a_ml
 - nutrient_b_ml
 - notes
-- timestamps(created_at, updated_at)
+- timestamps(created_at, updated_at, deleted_at)
 
 ---
 
@@ -80,6 +80,7 @@
 - notes
 - created_at
 - updated_at
+- deleted_at
 
 ---
 

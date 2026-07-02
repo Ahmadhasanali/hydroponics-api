@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Farm\StoreFarmRequest;
-use App\Http\Requests\UpdateFarmRequest;
-use App\Models\Farm;
+use App\Http\Requests\StoreFarmUserRequest;
+use App\Http\Requests\UpdateFarmUserRequest;
+use App\Models\Farm\FarmUser;
 
-class FarmController extends Controller
+class FarmUserController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -27,7 +27,7 @@ class FarmController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreFarmRequest $request)
+    public function store(StoreFarmUserRequest $request)
     {
         //
     }
@@ -35,7 +35,7 @@ class FarmController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Farm $farm)
+    public function show(FarmUser $farmUser)
     {
         //
     }
@@ -43,7 +43,7 @@ class FarmController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Farm $farm)
+    public function edit(FarmUser $farmUser)
     {
         //
     }
@@ -51,7 +51,7 @@ class FarmController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateFarmRequest $request, Farm $farm)
+    public function update(UpdateFarmUserRequest $request, FarmUser $farmUser)
     {
         //
     }
@@ -59,7 +59,7 @@ class FarmController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Farm $farm)
+    public function destroy(FarmUser $farmUser)
     {
         //
     }

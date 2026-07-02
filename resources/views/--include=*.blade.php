@@ -1,0 +1,14 @@
+nutrient-addition/index.blade.php
+nutrient-addition/create.blade.php
+tank/create.blade.php
+ph-down-log/index.blade.php
+farm/index.blade.php
+farm/create.blade.php
+daily-monitoring/create.blade.php
+farm/show.blade.php
+ph-down-log/create.blade.php
+dashboard/index.blade.php
+farm/edit.blade.php
+daily-monitoring/index.blade.php
+activity-logs/index.blade.php
+tank/index.blade.php

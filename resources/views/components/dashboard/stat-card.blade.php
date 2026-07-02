@@ -7,7 +7,7 @@
     'iconText' => 'text-slate-700',
 ])
 
-<article {{ $attributes->merge(['class' => 'rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-900/5']) }}>
+<article {{ $attributes->merge(['class' => 'rounded-[2rem] border border-slate-200/60 bg-white p-5 shadow-sm shadow-slate-900/5']) }}>
     <div class="flex items-center justify-between gap-3">
         <div>
             <p class="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500">{{ $title }}</p>

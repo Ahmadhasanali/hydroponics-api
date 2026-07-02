@@ -12,7 +12,12 @@ class UpdateFarmRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        $farm = $this->route('farm');
+
+        return $farm && $this->user()?->farms()
+            ->wherePivot('farm_id', $farm->id)
+            ->wherePivotIn('role', ['owner', 'manager'])
+            ->exists();
     }
 
     /**
@@ -20,10 +25,13 @@ class UpdateFarmRequest extends FormRequest
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
+    /** @return array<string, ValidationRule|array<mixed>|string> */
     public function rules(): array
     {
         return [
-            //
+            'name' => ['required', 'string', 'max:255'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'description' => ['nullable', 'string', 'max:2000'],
         ];
     }
 }

@@ -57,9 +57,12 @@ window.addEventListener('DOMContentLoaded', () => {
     // ── Restore state on page load ────────────────────────────────────────────
     if (isDesktop() && sidebar) {
         const stored = localStorage.getItem(STORAGE_KEY);
-        // Default: expanded (null → not collapsed)
         const shouldCollapse = stored === '1';
+        // Disable transition temporarily so no visible animation on initial restore
+        sidebar.style.transition = 'none';
         setDesktopCollapsed(shouldCollapse);
+        sidebar.offsetHeight; // force reflow
+        requestAnimationFrame(() => { sidebar.style.transition = ''; });
     }
 
     // ── Event listeners ───────────────────────────────────────────────────────
