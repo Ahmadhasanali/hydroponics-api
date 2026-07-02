@@ -3,7 +3,7 @@
 @section('title', 'Data Tank')
 
 @section('content')
-    <div class="min-h-screen lg:flex lg:bg-slate-50">
+    <div class="flex min-h-screen flex-col lg:flex-row lg:bg-slate-50">
         @include('partials.sidebar')
 
         <main class="flex flex-1 flex-col">
@@ -50,6 +50,11 @@
                                 <div class="mt-4 flex gap-2">
                                     <a href="{{ route('tank.show', $tankItem) }}" class="rounded-2xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200">Detail</a>
                                     <a href="{{ route('tank.edit', $tankItem) }}" class="rounded-2xl bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-200">Edit</a>
+                                    <form action="{{ route('tank.destroy', $tankItem) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus tank {{ $tankItem->name }}? Semua data monitoring terkait akan ikut terhapus.')" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="rounded-2xl bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100">Hapus</button>
+                                    </form>
                                 </div>
                             </article>
                         @endforeach

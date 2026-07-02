@@ -8,6 +8,7 @@ use App\Http\Requests\Farm\UpdateFarmRequest;
 use App\Models\Farm;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Gate;
 
 class FarmController extends Controller
 {
@@ -53,7 +54,7 @@ class FarmController extends Controller
 
     public function update(UpdateFarmRequest $request, Farm $farm): RedirectResponse
     {
-        $farm->query()->update($request->validated());
+        $farm->update($request->validated());
 
         return redirect()->route('farm.index')
             ->with('success', 'Farm berhasil diperbarui.');
@@ -61,7 +62,15 @@ class FarmController extends Controller
 
     public function destroy(Farm $farm): RedirectResponse
     {
-        // TODO: implement farm delete with authorization
+        Gate::authorize('delete', $farm);
+
+        $farm->tanks()->each(fn ($tank) => $tank->delete());
+
+        $farm->activityLogs()->delete();
+
+        $farm->delete();
+
+        session()->forget('selected_farm_id');
 
         return redirect()->route('farm.index')
             ->with('success', 'Farm berhasil dihapus.');

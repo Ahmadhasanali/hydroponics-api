@@ -16,6 +16,11 @@ class ActivityLog extends Model
         'entity_type',
         'entity_id',
         'description',
+        'created_at',
+    ];
+
+    protected $casts = [
+        'created_at' => 'datetime',
     ];
 
     public $timestamps = false;

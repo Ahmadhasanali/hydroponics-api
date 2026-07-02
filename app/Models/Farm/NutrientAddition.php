@@ -34,6 +34,20 @@ class NutrientAddition extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(function (NutrientAddition $addition) {
+            if ($addition->wasChanged('tank_id')) {
+                Tank::find($addition->getOriginal('tank_id'))?->recalculateCurrentState();
+            }
+            $addition->tank->recalculateCurrentState();
+        });
+
+        static::deleted(function (NutrientAddition $addition) {
+            $addition->tank->recalculateCurrentState();
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

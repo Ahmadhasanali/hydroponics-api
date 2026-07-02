@@ -35,24 +35,46 @@ class NutrientAdditionController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        // TODO: implement nutrient addition store with validation
-        // $validated = $request->validate([...]);
-        // NutrientAddition::create($validated + ['user_id' => auth()->id()]);
+        $validated = $request->validate([
+            'tank_id' => 'required|exists:tanks,id',
+            'log_date' => 'required|date',
+            'ppm_before' => 'required|numeric|min:0|max:3000',
+            'ppm_after' => 'required|numeric|min:0|max:3000|gt:ppm_before',
+            'nutrient_a_ml' => 'required|numeric|min:0|max:10000',
+            'nutrient_b_ml' => 'required|numeric|min:0|max:10000',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        NutrientAddition::create($validated + ['user_id' => auth()->id()]);
 
         return redirect()->route('nutrient-addition.index')
             ->with('success', 'Data AB Mix berhasil disimpan.');
     }
 
-    public function edit(NutrientAddition $nutrientAddition): View
+    public function edit(Request $request, NutrientAddition $nutrientAddition): View
     {
-        // TODO: implement nutrient addition edit
+        $farmId = $request->session()->get('selected_farm_id');
+        $tanks = Tank::where('farm_id', $farmId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
 
-        return view('nutrient-addition.edit', compact('nutrientAddition'));
+        return view('nutrient-addition.edit', compact('nutrientAddition', 'tanks'));
     }
 
     public function update(Request $request, NutrientAddition $nutrientAddition): RedirectResponse
     {
-        // TODO: implement nutrient addition update with validation
+        $validated = $request->validate([
+            'tank_id' => 'required|exists:tanks,id',
+            'log_date' => 'required|date',
+            'ppm_before' => 'required|numeric|min:0|max:3000',
+            'ppm_after' => 'required|numeric|min:0|max:3000|gt:ppm_before',
+            'nutrient_a_ml' => 'required|numeric|min:0|max:10000',
+            'nutrient_b_ml' => 'required|numeric|min:0|max:10000',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $nutrientAddition->update($validated);
 
         return redirect()->route('nutrient-addition.index')
             ->with('success', 'Data AB Mix berhasil diperbarui.');
@@ -60,7 +82,7 @@ class NutrientAdditionController extends Controller
 
     public function destroy(NutrientAddition $nutrientAddition): RedirectResponse
     {
-        // TODO: implement nutrient addition delete with authorization
+        $nutrientAddition->delete();
 
         return redirect()->route('nutrient-addition.index')
             ->with('success', 'Data AB Mix berhasil dihapus.');

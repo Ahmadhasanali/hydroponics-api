@@ -3,7 +3,7 @@
 @section('title', 'Daily Monitoring')
 
 @section('content')
-    <div class="min-h-screen lg:flex lg:bg-slate-50">
+    <div class="flex min-h-screen flex-col lg:flex-row lg:bg-slate-50">
         @include('partials.sidebar')
 
         <main class="flex flex-1 flex-col">
@@ -22,7 +22,6 @@
                     </a>
                 </div>
 
-                {{-- TODO: implement daily monitoring list with real data --}}
                 @if($monitorings->isEmpty())
                     <div class="mt-8 flex flex-col items-center justify-center rounded-[2rem] border-2 border-dashed border-slate-300 bg-white px-6 py-16 text-center">
                         <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[#4fc3f7]/15 text-[#4fc3f7]">
@@ -59,8 +58,22 @@
                                         <td class="px-5 py-3 text-slate-600">{{ $m->water_temperature }}°C</td>
                                         <td class="px-5 py-3 text-slate-500">{{ $m->user->name ?? '—' }}</td>
                                         <td class="px-5 py-3">
-                                            {{-- TODO: implement edit/delete actions --}}
-                                            <span class="text-xs text-slate-400 italic">TODO</span>
+                                            <div class="flex items-center gap-2">
+                                                <a href="{{ route('daily-monitoring.edit', $m) }}"
+                                                    class="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">
+                                                    <i class="bi bi-pencil"></i>
+                                                    Edit
+                                                </a>
+                                                <form action="{{ route('daily-monitoring.destroy', $m) }}" method="POST" onsubmit="return confirm('Hapus data monitoring ini?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit"
+                                                        class="inline-flex items-center gap-1 rounded-xl border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50">
+                                                        <i class="bi bi-trash"></i>
+                                                        Hapus
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach

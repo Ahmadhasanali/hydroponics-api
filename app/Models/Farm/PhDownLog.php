@@ -32,6 +32,20 @@ class PhDownLog extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(function (PhDownLog $log) {
+            if ($log->wasChanged('tank_id')) {
+                Tank::find($log->getOriginal('tank_id'))?->recalculateCurrentState();
+            }
+            $log->tank->recalculateCurrentState();
+        });
+
+        static::deleted(function (PhDownLog $log) {
+            $log->tank->recalculateCurrentState();
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

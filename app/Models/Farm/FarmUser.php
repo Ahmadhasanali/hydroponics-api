@@ -11,6 +11,8 @@ class FarmUser extends Pivot
     /** @use HasFactory<FarmUserFactory> */
     use HasFactory;
 
+    protected $table = 'farm_users';
+
     protected $fillable = [
         'farm_id',
         'user_id',

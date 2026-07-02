@@ -3,7 +3,7 @@
 @section('title', 'AB Mix')
 
 @section('content')
-    <div class="min-h-screen lg:flex lg:bg-slate-50">
+    <div class="flex min-h-screen flex-col lg:flex-row lg:bg-slate-50">
         @include('partials.sidebar')
 
         <main class="flex flex-1 flex-col">

@@ -65,6 +65,8 @@ return [
     |
     */
 
+    // TODO: set timezone to 'Asia/Jakarta' or user's local timezone
+    // TODO: set to user's timezone (e.g., 'Asia/Jakarta') and implement timezone display helper
     'timezone' => 'UTC',
 
     /*

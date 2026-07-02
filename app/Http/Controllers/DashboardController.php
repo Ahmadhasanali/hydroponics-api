@@ -3,10 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Farm\ActivityLog;
-use App\Models\Farm\DailyMonitoring;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -21,7 +19,6 @@ class DashboardController extends Controller
                 'farms' => collect(),
                 'selectedFarm' => null,
                 'tanks' => collect(),
-                'latestMonitorings' => collect(),
                 'activityLogs' => collect(),
                 'stats' => [],
             ]);
@@ -31,26 +28,14 @@ class DashboardController extends Controller
         $selectedFarm = $farms->firstWhere('id', $selectedFarmId) ?? $farms->first();
         $request->session()->put('selected_farm_id', $selectedFarm->id);
 
-        $tanks = $selectedFarm->tanks()->orderBy('name')->get();
-
-        $tankIds = $tanks->pluck('id');
-
-        $latestMonitorings = DailyMonitoring::whereIn('tank_id', $tankIds)
-            ->whereIn('id', function ($q) use ($tankIds) {
-                $q->select(DB::raw('MAX(id)'))
-                    ->from('daily_monitorings')
-                    ->whereIn('tank_id', $tankIds)
-                    ->groupBy('tank_id');
-            })
-            ->get()
-            ->keyBy('tank_id');
+        $tanks = $selectedFarm->tanks()->orderBy('id', 'asc')->get();
 
         $totalTanks = $tanks->count();
         $activeTanks = $tanks->where('is_active', true)->count();
 
-        $avgPpm = $latestMonitorings->avg('ppm');
-        $avgPh = $latestMonitorings->avg('ph');
-        $avgTemp = $latestMonitorings->avg('water_temperature');
+        $avgPpm = $tanks->avg('current_ppm');
+        $avgPh = $tanks->avg('current_ph');
+        $avgTemp = $tanks->avg('current_water_temperature');
 
         $stats = [
             'total_tanks' => $totalTanks,
@@ -62,7 +47,7 @@ class DashboardController extends Controller
 
         $activityLogs = ActivityLog::where('farm_id', $selectedFarm->id)
             ->with('user')
-            ->latest('created_at')
+            ->latest('id')
             ->limit(10)
             ->get();
 
@@ -70,7 +55,6 @@ class DashboardController extends Controller
             'farms',
             'selectedFarm',
             'tanks',
-            'latestMonitorings',
             'activityLogs',
             'stats',
         ));

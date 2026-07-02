@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Farm;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -12,7 +13,13 @@ class StoreFarmUserRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        /** @var Farm $farm */
+        $farm = $this->route('farm');
+
+        return $farm->users()
+            ->where('user_id', $this->user()->id)
+            ->wherePivot('role', 'owner')
+            ->exists();
     }
 
     /**
@@ -23,7 +30,7 @@ class StoreFarmUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'email' => ['required', 'string', 'exists:users,name'],
         ];
     }
 }

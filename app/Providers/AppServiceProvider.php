@@ -2,6 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Farm;
+use App\Models\Farm\DailyMonitoring;
+use App\Models\Farm\NutrientAddition;
+use App\Models\Farm\PhDownLog;
+use App\Models\Farm\Tank;
+use App\Observers\ActivityLogObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -22,6 +28,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Farm::observe(ActivityLogObserver::class);
+        Tank::observe(ActivityLogObserver::class);
+        DailyMonitoring::observe(ActivityLogObserver::class);
+        NutrientAddition::observe(ActivityLogObserver::class);
+        PhDownLog::observe(ActivityLogObserver::class);
+
         $this->loadMigrationsFrom(
             [
                 database_path('migrations/User'),

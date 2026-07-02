@@ -35,24 +35,44 @@ class PhDownLogController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        // TODO: implement pH down store with validation
-        // $validated = $request->validate([...]);
-        // PhDownLog::create($validated + ['user_id' => auth()->id()]);
+        $validated = $request->validate([
+            'tank_id' => 'required|exists:tanks,id',
+            'log_date' => 'required|date',
+            'ph_before' => 'required|numeric|min:0|max:14',
+            'ph_after' => 'required|numeric|min:0|max:14|lt:ph_before',
+            'ph_down_ml' => 'required|numeric|min:0|max:1000',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        PhDownLog::create($validated + ['user_id' => auth()->id()]);
 
         return redirect()->route('ph-down-log.index')
             ->with('success', 'Data pH Down berhasil disimpan.');
     }
 
-    public function edit(PhDownLog $phDownLog): View
+    public function edit(Request $request, PhDownLog $phDownLog): View
     {
-        // TODO: implement pH down edit
+        $farmId = $request->session()->get('selected_farm_id');
+        $tanks = Tank::where('farm_id', $farmId)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
 
-        return view('ph-down-log.edit', compact('phDownLog'));
+        return view('ph-down-log.edit', compact('phDownLog', 'tanks'));
     }
 
     public function update(Request $request, PhDownLog $phDownLog): RedirectResponse
     {
-        // TODO: implement pH down update with validation
+        $validated = $request->validate([
+            'tank_id' => 'required|exists:tanks,id',
+            'log_date' => 'required|date',
+            'ph_before' => 'required|numeric|min:0|max:14',
+            'ph_after' => 'required|numeric|min:0|max:14|lt:ph_before',
+            'ph_down_ml' => 'required|numeric|min:0|max:1000',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $phDownLog->update($validated);
 
         return redirect()->route('ph-down-log.index')
             ->with('success', 'Data pH Down berhasil diperbarui.');
@@ -60,7 +80,7 @@ class PhDownLogController extends Controller
 
     public function destroy(PhDownLog $phDownLog): RedirectResponse
     {
-        // TODO: implement pH down delete with authorization
+        $phDownLog->delete();
 
         return redirect()->route('ph-down-log.index')
             ->with('success', 'Data pH Down berhasil dihapus.');

@@ -3,7 +3,7 @@
 @section('title', 'Tambah pH Down')
 
 @section('content')
-    <div class="min-h-screen lg:flex lg:bg-slate-50">
+    <div class="flex min-h-screen flex-col lg:flex-row lg:bg-slate-50">
         @include('partials.sidebar')
 
         <main class="flex flex-1 flex-col">
@@ -33,6 +33,12 @@
                                         <option value="{{ $tank->id }}">{{ $tank->name }} ({{ number_format($tank->capacity_liter, 0) }} L)</option>
                                     @endforeach
                                 </select>
+                            </div>
+
+                            <div>
+                                <label for="log_date" class="block text-sm font-semibold text-slate-700">Tanggal</label>
+                                <input type="date" name="log_date" id="log_date" value="{{ old('log_date', date('Y-m-d')) }}" required
+                                    class="mt-1.5 block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 transition focus:border-[#ffce54] focus:outline-none focus:ring-2 focus:ring-[#ffce54]/20">
                             </div>
 
                             <div class="grid gap-4 sm:grid-cols-3">

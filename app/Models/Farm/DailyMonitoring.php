@@ -32,6 +32,20 @@ class DailyMonitoring extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(function (DailyMonitoring $monitoring) {
+            if ($monitoring->wasChanged('tank_id')) {
+                Tank::find($monitoring->getOriginal('tank_id'))?->recalculateCurrentState();
+            }
+            $monitoring->tank->recalculateCurrentState();
+        });
+
+        static::deleted(function (DailyMonitoring $monitoring) {
+            $monitoring->tank->recalculateCurrentState();
+        });
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
