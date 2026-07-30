@@ -65,16 +65,17 @@ class DailyMonitoringTest extends TestCase
     /** @see FR #6 - Daily Monitoring: Unique per tank per day */
     public function test_monitoring_requires_unique_tank_date(): void
     {
+        $date = '2026-07-30';
         ['user' => $user, 'tank' => $tank] = $this->setUpFarm();
         DailyMonitoring::factory()->create([
             'tank_id' => $tank->id,
             'user_id' => $user->id,
-            'log_date' => now()->toDateString(),
+            'log_date' => $date,
         ]);
 
         $response = $this->actingAs($user)->post(route('daily-monitoring.store'), [
             'tank_id' => $tank->id,
-            'log_date' => now()->toDateString(),
+            'log_date' => $date,
             'ppm' => 900,
             'ph' => 6.0,
         ]);
