@@ -45,7 +45,7 @@ class ActivityLogObserver
 
         $name = match (true) {
             $entity instanceof Farm, $entity instanceof Tank => $entity->name,
-            default => "{$entityType} #{$entity->id}",
+            default => "#{$entity->id}",
         };
 
         ActivityLog::create([
@@ -54,7 +54,7 @@ class ActivityLogObserver
             'action' => $action,
             'entity_type' => $entityType,
             'entity_id' => $entity->id,
-            'description' => ucfirst("{$action} {$entityType}: {$name}"),
+            'description' => ucfirst("{$action} {$entityType} {$name}"),
             'created_at' => now(),
         ]);
     }

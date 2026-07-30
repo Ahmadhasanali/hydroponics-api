@@ -19,6 +19,6 @@ class ExampleTest extends TestCase
 
         $response = $this->actingAs($user)->get('/');
 
-        $response->assertStatus(200);
+        $response->assertRedirect(route('dashboard'));
     }
 }

@@ -17,9 +17,10 @@ class FarmSeeder extends Seeder
      */
     public function run(): void
     {
-        $user = User::factory()->create([
-            'name' => 'hasan',
-        ]);
+        $user = User::firstOrCreate(
+            ['name' => 'hasan'],
+            User::factory()->raw()
+        );
 
         $farm = Farm::factory()->create([
             'created_by' => $user->id,

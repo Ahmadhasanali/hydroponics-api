@@ -16,20 +16,12 @@ class UserAdminSeeder extends Seeder
      */
     public function run(): void
     {
-        $adminCount = User::query()->where('name', 'superadmin')->count();
+        User::withTrashed()->where('name', 'superadmin')->forceDelete();
 
-        if ($adminCount > 0) {
-            User::query()->where('is_admin', true)->delete();
-        }
-
-        $this->createAdmin();
-    }
-
-    private function createAdmin(): void
-    {
-        User::factory()->admin()->create([
+        User::create([
             'name' => 'superadmin',
             'password' => Hash::make('password'),
+            'is_admin' => true,
         ]);
     }
 }

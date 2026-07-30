@@ -17,10 +17,12 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        User::factory()->create([
-            'name' => 'hasan',
-            'password' => Hash::make('password'),
-            'remember_token' => Str::random(10),
-        ]);
+        User::firstOrCreate(
+            ['name' => 'hasan'],
+            [
+                'password' => Hash::make('password'),
+                'remember_token' => Str::random(10),
+            ]
+        );
     }
 }
