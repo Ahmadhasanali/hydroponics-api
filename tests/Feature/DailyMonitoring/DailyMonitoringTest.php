@@ -73,7 +73,7 @@ class DailyMonitoringTest extends TestCase
             'log_date' => $date,
         ]);
 
-        $response = $this->actingAs($user)->post(route('daily-monitoring.store'), [
+        $response = $this->actingAs($user)->from(route('daily-monitoring.create'))->post(route('daily-monitoring.store'), [
             'tank_id' => $tank->id,
             'log_date' => $date,
             'ppm' => 900,
@@ -81,6 +81,7 @@ class DailyMonitoringTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors('log_date');
+        $this->assertDatabaseCount('daily_monitorings', 1);
     }
 
     /** @see FR #6 - Daily Monitoring: PPM range validation */
