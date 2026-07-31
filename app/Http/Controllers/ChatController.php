@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Chat\ChatMessage;
+use App\Models\Chat\ChatSession;
 use App\Services\ChatToolsService;
 use App\Services\GeminiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 class ChatController extends Controller
@@ -16,27 +19,30 @@ class ChatController extends Controller
     public function __construct(
         private readonly GeminiService $gemini,
         private readonly ChatToolsService $chatTools,
-    ) {
-    }
+    ) {}
 
     public function __invoke(Request $request): JsonResponse
     {
         $validated = $request->validate([
+            'session_id' => 'nullable|integer|exists:chat_sessions,id',
             'message' => 'required|string|max:2000',
-            'history' => 'present|array|max:20',
-            'history.*.role' => 'required|in:user,assistant',
-            'history.*.content' => 'required|string|max:8000',
         ]);
 
-        $messages = $this->buildMessages($validated['history'], $validated['message']);
+        $session = $this->resolveSession($request, $validated['session_id'] ?? null);
+        $messages = $this->buildContext($session, $validated['message']);
 
         try {
             for ($round = 0; $round < self::MAX_TOOL_ROUNDS; $round++) {
                 $response = $this->gemini->generate($messages);
 
                 if ($response['function_calls'] === []) {
+                    $reply = $response['text'] ?? 'Maaf, saya tidak dapat menjawab saat ini.';
+                    $this->persistExchange($session, $validated['message'], $reply);
+
                     return response()->json([
-                        'reply' => $response['text'] ?? 'Maaf, saya tidak dapat menjawab saat ini.',
+                        'session_id' => $session->id,
+                        'title' => $session->title,
+                        'reply' => $reply,
                     ]);
                 }
 
@@ -77,23 +83,46 @@ class ChatController extends Controller
         }
     }
 
-    /**
-     * @param  array<int, array{role: string, content: string}>  $history
-     * @return array<int, array{role: string, content: string}>
-     */
-    private function buildMessages(array $history, string $message): array
+    private function resolveSession(Request $request, ?int $sessionId): ChatSession
     {
-        $messages = [];
+        if ($sessionId === null) {
+            $session = ChatSession::create(['user_id' => $request->user()->id, 'title' => null]);
 
-        foreach ($history as $item) {
-            $messages[] = ['role' => $item['role'], 'content' => $item['content']];
+            return $session;
         }
 
-        $firstUser = array_search('user', array_column($messages, 'role'), true);
-        $messages = $firstUser !== false ? array_slice($messages, $firstUser) : [];
+        $session = ChatSession::where('user_id', $request->user()->id)->findOrFail($sessionId);
+
+        return $session;
+    }
+
+    /**
+     * @return array<int, array{role: string, content: string}>
+     */
+    private function buildContext(ChatSession $session, string $message): array
+    {
+        $messages = $session->messages()
+            ->orderBy('created_at')
+            ->limit(20)
+            ->get()
+            ->map(fn (ChatMessage $item): array => ['role' => $item->role, 'content' => $item->content])
+            ->values()
+            ->all();
 
         $messages[] = ['role' => 'user', 'content' => $message];
 
-        return array_values($messages);
+        return $messages;
+    }
+
+    private function persistExchange(ChatSession $session, string $userMessage, string $reply): void
+    {
+        $session->messages()->createMany([
+            ['role' => 'user', 'content' => $userMessage],
+            ['role' => 'assistant', 'content' => $reply],
+        ]);
+
+        if ($session->title === null) {
+            $session->update(['title' => Str::limit($userMessage, 60, '')]);
+        }
     }
 }

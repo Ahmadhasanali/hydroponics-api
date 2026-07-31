@@ -42,7 +42,6 @@ class ChatTest extends TestCase
 
         $response = $this->actingAs($user)->postJson('/api/chat', [
             'message' => 'Berapa PPM ideal selada?',
-            'history' => [],
         ]);
 
         $response->assertOk()->assertJson([
@@ -88,7 +87,6 @@ class ChatTest extends TestCase
 
         $response = $this->actingAs($user)->postJson('/api/chat', [
             'message' => 'Farm saya apa saja?',
-            'history' => [],
         ]);
 
         $response->assertOk()->assertJson(['reply' => 'Farm Anda bernama '.$farm->name.'.']);
@@ -120,58 +118,11 @@ class ChatTest extends TestCase
 
         $response = $this->actingAs($user)->postJson('/api/chat', [
             'message' => 'halo',
-            'history' => [],
         ]);
 
         $response->assertStatus(503)->assertJson([
             'reply' => 'Maaf, layanan AI sedang sibuk. Silakan coba lagi sebentar.',
         ]);
-    }
-
-    #[Test]
-    public function normalizes_history_starting_with_assistant_turn(): void
-    {
-        Http::fake([
-            'generativelanguage.googleapis.com/*' => Http::response([
-                'choices' => [[
-                    'message' => ['role' => 'assistant', 'content' => 'Halo juga!'],
-                ]],
-            ], 200),
-        ]);
-
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user)->postJson('/api/chat', [
-            'message' => 'halo',
-            'history' => [['role' => 'assistant', 'content' => 'Halo!']],
-        ]);
-
-        $response->assertOk()->assertJson(['reply' => 'Halo juga!']);
-
-        Http::assertSent(function ($request): bool {
-            return $request->data()['messages'][1]['role'] === 'user';
-        });
-    }
-
-    #[Test]
-    public function accepts_long_assistant_history_content(): void
-    {
-        Http::fake([
-            'generativelanguage.googleapis.com/*' => Http::response([
-                'choices' => [[
-                    'message' => ['role' => 'assistant', 'content' => 'Dipahami.'],
-                ]],
-            ], 200),
-        ]);
-
-        $user = User::factory()->create();
-
-        $response = $this->actingAs($user)->postJson('/api/chat', [
-            'message' => 'lanjut',
-            'history' => [['role' => 'assistant', 'content' => str_repeat('a', 3000)]],
-        ]);
-
-        $response->assertOk()->assertJson(['reply' => 'Dipahami.']);
     }
 
     #[Test]
@@ -188,11 +139,11 @@ class ChatTest extends TestCase
         $user = User::factory()->create();
 
         for ($i = 0; $i < 10; $i++) {
-            $this->actingAs($user)->postJson('/api/chat', ['message' => 'halo', 'history' => []])
+            $this->actingAs($user)->postJson('/api/chat', ['message' => 'halo'])
                 ->assertOk();
         }
 
-        $this->actingAs($user)->postJson('/api/chat', ['message' => 'halo', 'history' => []])
+        $this->actingAs($user)->postJson('/api/chat', ['message' => 'halo'])
             ->assertStatus(429);
     }
 }
