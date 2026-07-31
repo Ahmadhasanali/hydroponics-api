@@ -1,3 +1,5 @@
+import { renderMarkdown } from './markdown.js';
+
 const initChatWidget = () => {
     const root = document.getElementById('agroBot');
     if (!root) return;
@@ -45,14 +47,23 @@ const initChatWidget = () => {
         bubble.className =
             role === 'user'
                 ? 'max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-[#ffce54] px-4 py-2.5 text-sm font-medium text-[#1a1c1e]'
-                : 'max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-md border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-700';
-        bubble.textContent = content;
+                : 'max-w-[85%] rounded-2xl rounded-bl-md border border-slate-200/80 bg-white px-4 py-2.5 text-sm text-slate-700 ' +
+                  '[&_p]:leading-relaxed [&_p+*]:mt-2 [&_h4]:font-semibold [&_h4]:text-slate-900 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5 ' +
+                  '[&_ol]:my-2 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5 [&_strong]:font-semibold [&_strong]:text-slate-900 ' +
+                  '[&_em]:italic [&_code]:rounded-md [&_code]:bg-slate-100 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.85em]';
+        if (role === 'assistant') {
+            bubble.innerHTML = renderMarkdown(content);
+        } else {
+            bubble.textContent = content;
+        }
         wrap.appendChild(bubble);
         messages.appendChild(wrap);
         messages.scrollTop = messages.scrollHeight;
 
         if (persist) saveMessages();
     };
+
+    loadMessages();
 
     const showTyping = () => {
         const wrap = document.createElement('div');
