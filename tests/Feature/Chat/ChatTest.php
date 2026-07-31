@@ -114,6 +114,48 @@ class ChatTest extends TestCase
     }
 
     #[Test]
+    public function normalizes_history_starting_with_assistant_turn(): void
+    {
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [['content' => ['parts' => [['text' => 'Halo juga!']]]]],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson('/api/chat', [
+            'message' => 'halo',
+            'history' => [['role' => 'assistant', 'content' => 'Halo!']],
+        ]);
+
+        $response->assertOk()->assertJson(['reply' => 'Halo juga!']);
+
+        Http::assertSent(function ($request): bool {
+            return $request->data()['contents'][0]['role'] === 'user';
+        });
+    }
+
+    #[Test]
+    public function accepts_long_assistant_history_content(): void
+    {
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [['content' => ['parts' => [['text' => 'Dipahami.']]]]],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson('/api/chat', [
+            'message' => 'lanjut',
+            'history' => [['role' => 'assistant', 'content' => str_repeat('a', 3000)]],
+        ]);
+
+        $response->assertOk()->assertJson(['reply' => 'Dipahami.']);
+    }
+
+    #[Test]
     public function rate_limits_after_ten_messages_per_minute(): void
     {
         Http::fake([

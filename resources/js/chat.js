@@ -28,16 +28,18 @@ const initChatWidget = () => {
     const saveMessages = () => {
         const history = [];
         messages.querySelectorAll('.agro-bubble').forEach((el) => {
+            if (el.dataset.history === 'false') return;
             history.push({ role: el.dataset.role, content: el.dataset.content });
         });
         localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-20)));
     };
 
-    const appendBubble = (role, content, persist = true) => {
+    const appendBubble = (role, content, persist = true, tracked = true) => {
         const wrap = document.createElement('div');
         wrap.className = 'agro-bubble flex ' + (role === 'user' ? 'justify-end' : 'justify-start');
         wrap.dataset.role = role;
         wrap.dataset.content = content;
+        if (!tracked) wrap.dataset.history = 'false';
 
         const bubble = document.createElement('div');
         bubble.className =
@@ -70,6 +72,7 @@ const initChatWidget = () => {
     const history = () => {
         const items = [];
         messages.querySelectorAll('.agro-bubble').forEach((el) => {
+            if (el.dataset.history === 'false') return;
             items.push({ role: el.dataset.role, content: el.dataset.content });
         });
         return items.slice(-20);
@@ -114,7 +117,9 @@ const initChatWidget = () => {
         if (!panel.classList.contains('hidden') && messages.children.length === 0) {
             appendBubble(
                 'assistant',
-                'Halo! Saya Agro Bot. Tanyakan apa saja tentang budidaya selada hidroponik, atau data farm Anda seperti PPM, pH, dan riwayat nutrisi.'
+                'Halo! Saya Agro Bot. Tanyakan apa saja tentang budidaya selada hidroponik, atau data farm Anda seperti PPM, pH, dan riwayat nutrisi.',
+                false,
+                false
             );
         }
         input.focus();

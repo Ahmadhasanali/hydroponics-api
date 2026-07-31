@@ -25,7 +25,7 @@ class ChatController extends Controller
             'message' => 'required|string|max:2000',
             'history' => 'present|array|max:20',
             'history.*.role' => 'required|in:user,assistant',
-            'history.*.content' => 'required|string|max:2000',
+            'history.*.content' => 'required|string|max:8000',
         ]);
 
         $contents = $this->buildContents($validated['history'], $validated['message']);
@@ -82,8 +82,11 @@ class ChatController extends Controller
             ];
         }
 
+        $firstUser = array_search('user', array_column($contents, 'role'), true);
+        $contents = $firstUser !== false ? array_slice($contents, $firstUser) : [];
+
         $contents[] = ['role' => 'user', 'parts' => [['text' => $message]]];
 
-        return $contents;
+        return array_values($contents);
     }
 }
