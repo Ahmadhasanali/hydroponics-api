@@ -44,7 +44,7 @@ class MonitoringHistoryToolTest extends TestCase
             'ph' => 6.4,
         ]);
 
-        $result = (new MonitoringHistoryTool())->handle(['tank_id' => $tank->id, 'days' => 7], $user);
+        $result = (new MonitoringHistoryTool)->handle(['tank_id' => $tank->id, 'days' => 7], $user);
 
         $this->assertArrayHasKey('data', $result);
         $this->assertCount(1, $result['data']);
@@ -63,7 +63,7 @@ class MonitoringHistoryToolTest extends TestCase
         $otherFarm->users()->attach($other->id, ['role' => 'owner']);
         $tank = Tank::factory()->create(['farm_id' => $otherFarm->id, 'created_by' => $other->id]);
 
-        $result = (new MonitoringHistoryTool())->handle(['tank_id' => $tank->id], $user);
+        $result = (new MonitoringHistoryTool)->handle(['tank_id' => $tank->id], $user);
 
         $this->assertArrayHasKey('error', $result);
     }

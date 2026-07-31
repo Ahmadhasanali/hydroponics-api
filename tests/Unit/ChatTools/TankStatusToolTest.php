@@ -28,7 +28,7 @@ class TankStatusToolTest extends TestCase
             'current_water_temperature' => 24.5,
         ]);
 
-        $result = (new TankStatusTool())->handle(['tank_id' => $tank->id], $user);
+        $result = (new TankStatusTool)->handle(['tank_id' => $tank->id], $user);
 
         $this->assertArrayHasKey('data', $result);
         $this->assertSame($tank->id, $result['data']['id']);
@@ -48,7 +48,7 @@ class TankStatusToolTest extends TestCase
         ]);
         $tank->forceFill(['last_condition_updated_at' => '2026-07-31 07:00:00'])->save();
 
-        $result = (new TankStatusTool())->handle(['tank_id' => $tank->id], $user);
+        $result = (new TankStatusTool)->handle(['tank_id' => $tank->id], $user);
 
         $this->assertSame('2026-07-31T07:00:00+00:00', $result['data']['last_condition_updated_at']);
     }
@@ -63,7 +63,7 @@ class TankStatusToolTest extends TestCase
         $otherFarm->users()->attach($other->id, ['role' => 'owner']);
         $tank = Tank::factory()->create(['farm_id' => $otherFarm->id, 'created_by' => $other->id]);
 
-        $result = (new TankStatusTool())->handle(['tank_id' => $tank->id], $user);
+        $result = (new TankStatusTool)->handle(['tank_id' => $tank->id], $user);
 
         $this->assertArrayHasKey('error', $result);
     }

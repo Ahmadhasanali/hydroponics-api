@@ -31,7 +31,7 @@ class PhDownHistoryToolTest extends TestCase
             'ph_down_ml' => 50,
         ]);
 
-        $result = (new PhDownHistoryTool())->handle(['tank_id' => $tank->id], $user);
+        $result = (new PhDownHistoryTool)->handle(['tank_id' => $tank->id], $user);
 
         $this->assertArrayHasKey('data', $result);
         $this->assertCount(1, $result['data']);
@@ -49,7 +49,7 @@ class PhDownHistoryToolTest extends TestCase
         $otherFarm->users()->attach($other->id, ['role' => 'owner']);
         $tank = Tank::factory()->create(['farm_id' => $otherFarm->id, 'created_by' => $other->id]);
 
-        $result = (new PhDownHistoryTool())->handle(['tank_id' => $tank->id], $user);
+        $result = (new PhDownHistoryTool)->handle(['tank_id' => $tank->id], $user);
 
         $this->assertArrayHasKey('error', $result);
     }

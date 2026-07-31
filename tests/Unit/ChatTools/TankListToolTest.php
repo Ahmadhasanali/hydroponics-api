@@ -34,7 +34,7 @@ class TankListToolTest extends TestCase
         $otherFarm->users()->attach($other->id, ['role' => 'owner']);
         Tank::factory()->create(['farm_id' => $otherFarm->id, 'created_by' => $other->id]);
 
-        $result = (new TankListTool())->handle([], $user);
+        $result = (new TankListTool)->handle([], $user);
 
         $this->assertArrayHasKey('data', $result);
         $this->assertCount(1, $result['data']);
@@ -52,7 +52,7 @@ class TankListToolTest extends TestCase
         Tank::factory()->create(['farm_id' => $farm->id, 'created_by' => $user->id]);
         $tankB = Tank::factory()->create(['farm_id' => $farmB->id, 'created_by' => $user->id]);
 
-        $result = (new TankListTool())->handle(['farm_id' => $farmB->id], $user);
+        $result = (new TankListTool)->handle(['farm_id' => $farmB->id], $user);
 
         $this->assertCount(1, $result['data']);
         $this->assertSame($tankB->id, $result['data'][0]['id']);
@@ -67,7 +67,7 @@ class TankListToolTest extends TestCase
         $otherFarm = Farm::factory()->create(['created_by' => $other->id]);
         $otherFarm->users()->attach($other->id, ['role' => 'owner']);
 
-        $result = (new TankListTool())->handle(['farm_id' => $otherFarm->id], $user);
+        $result = (new TankListTool)->handle(['farm_id' => $otherFarm->id], $user);
 
         $this->assertArrayHasKey('error', $result);
     }

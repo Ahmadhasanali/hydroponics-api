@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Services;
 
+use App\Models\User;
 use App\Services\ChatToolsService;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -37,7 +38,7 @@ class ChatToolsServiceTest extends TestCase
     #[Test]
     public function handle_returns_error_for_unknown_tool(): void
     {
-        $result = app(ChatToolsService::class)->handle('tool_tidak_ada', [], \App\Models\User::factory()->make());
+        $result = app(ChatToolsService::class)->handle('tool_tidak_ada', [], User::factory()->make());
 
         $this->assertArrayHasKey('error', $result);
     }

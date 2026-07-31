@@ -26,7 +26,7 @@ class FarmListToolTest extends TestCase
         $foreignFarm = Farm::factory()->create(['created_by' => $otherUser->id]);
         $foreignFarm->users()->attach($otherUser->id, ['role' => 'owner']);
 
-        $result = (new FarmListTool())->handle([], $user);
+        $result = (new FarmListTool)->handle([], $user);
 
         $this->assertArrayHasKey('data', $result);
         $this->assertCount(1, $result['data']);

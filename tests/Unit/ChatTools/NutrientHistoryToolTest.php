@@ -32,7 +32,7 @@ class NutrientHistoryToolTest extends TestCase
             'nutrient_b_ml' => 100,
         ]);
 
-        $result = (new NutrientHistoryTool())->handle(['tank_id' => $tank->id], $user);
+        $result = (new NutrientHistoryTool)->handle(['tank_id' => $tank->id], $user);
 
         $this->assertArrayHasKey('data', $result);
         $this->assertCount(1, $result['data']);
@@ -51,7 +51,7 @@ class NutrientHistoryToolTest extends TestCase
         $otherFarm->users()->attach($other->id, ['role' => 'owner']);
         $tank = Tank::factory()->create(['farm_id' => $otherFarm->id, 'created_by' => $other->id]);
 
-        $result = (new NutrientHistoryTool())->handle(['tank_id' => $tank->id], $user);
+        $result = (new NutrientHistoryTool)->handle(['tank_id' => $tank->id], $user);
 
         $this->assertArrayHasKey('error', $result);
     }

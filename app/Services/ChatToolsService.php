@@ -72,7 +72,7 @@ class ChatToolsService
                 $converted[$key] = $typeMap[$value] ?? strtolower($value);
             } elseif (is_array($value)) {
                 if ($value === []) {
-                    $converted[$key] = $key === 'required' ? [] : new \stdClass();
+                    $converted[$key] = $key === 'required' ? [] : new \stdClass;
                 } else {
                     $converted[$key] = $this->toJsonSchema($value);
                 }

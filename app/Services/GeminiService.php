@@ -9,9 +9,7 @@ class GeminiService
 {
     private const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
 
-    public function __construct(private readonly ChatToolsService $chatTools)
-    {
-    }
+    public function __construct(private readonly ChatToolsService $chatTools) {}
 
     /**
      * @param  array<int, array{role: string, content: ?string, tool_calls?: array<int, mixed>}>  $messages
