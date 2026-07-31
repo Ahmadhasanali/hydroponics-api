@@ -5,6 +5,7 @@ namespace Database\Factories\Chat;
 use App\Models\Chat\ChatSession;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 /**
  * @extends Factory<ChatSession>
@@ -15,7 +16,7 @@ class ChatSessionFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'title' => fake()->sentence(4),
+            'title' => Str::limit(fake()->sentence(4), 60, ''),
         ];
     }
 

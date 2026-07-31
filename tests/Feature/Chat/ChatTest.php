@@ -126,6 +126,45 @@ class ChatTest extends TestCase
     }
 
     #[Test]
+    public function exhausts_tool_loop_and_returns_session_id(): void
+    {
+        $toolCall = [
+            'choices' => [[
+                'message' => [
+                    'role' => 'assistant',
+                    'content' => null,
+                    'tool_calls' => [[
+                        'id' => 'call_1',
+                        'type' => 'function',
+                        'function' => ['name' => 'get_farms', 'arguments' => '{}'],
+                    ]],
+                ],
+            ]],
+        ];
+
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::sequence()
+                ->push($toolCall, 200)
+                ->push($toolCall, 200)
+                ->push($toolCall, 200)
+                ->push($toolCall, 200)
+                ->whenEmpty(Http::response([], 500)),
+        ]);
+
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->postJson('/api/chat', [
+            'message' => 'Farm saya apa saja?',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('reply', 'Maaf, saya kesulitan menjawab pertanyaan Anda. Silakan coba lagi.')
+            ->assertJsonStructure(['session_id', 'title']);
+        $this->assertNotNull($response->json('session_id'));
+        $this->assertCount(4, Http::recorded());
+    }
+
+    #[Test]
     public function rate_limits_after_ten_messages_per_minute(): void
     {
         Http::fake([

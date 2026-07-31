@@ -59,7 +59,7 @@ class ChatSessionController extends Controller
     {
         abort_if($session->user_id !== $request->user()->id, 404);
 
-        $messages = $session->messages()->orderBy('created_at')->get();
+        $messages = $session->messages()->orderBy('created_at')->orderBy('id')->get();
 
         return response()->json(['messages' => $messages]);
     }
@@ -69,6 +69,8 @@ class ChatSessionController extends Controller
         abort_if($session->user_id !== $request->user()->id, 404);
 
         $session->messages()->delete();
+
+        $session->touch();
 
         return response()->noContent();
     }

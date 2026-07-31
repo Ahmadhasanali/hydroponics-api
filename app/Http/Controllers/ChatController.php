@@ -28,7 +28,7 @@ class ChatController extends Controller
             'message' => 'required|string|max:2000',
         ]);
 
-        $session = $this->resolveSession($request, $validated['session_id'] ?? null);
+        [$session, $createdSession] = $this->resolveSession($request, $validated['session_id'] ?? null);
         $messages = $this->buildContext($session, $validated['message']);
 
         try {
@@ -75,27 +75,38 @@ class ChatController extends Controller
                 }
             }
 
-            return response()->json(['reply' => 'Maaf, saya kesulitan menjawab pertanyaan Anda. Silakan coba lagi.']);
+            return response()->json([
+                'session_id' => $session->id,
+                'title' => $session->title,
+                'reply' => 'Maaf, saya kesulitan menjawab pertanyaan Anda. Silakan coba lagi.',
+            ]);
         } catch (Throwable $e) {
             Log::error('Chat gagal: '.$e->getMessage());
+
+            if ($createdSession && $session->messages()->doesntExist()) {
+                $session->forceDelete();
+            }
 
             return response()->json(['reply' => 'Maaf, layanan AI sedang sibuk. Silakan coba lagi sebentar.'], 503);
         }
     }
 
-    private function resolveSession(Request $request, ?int $sessionId): ChatSession
+    /**
+     * @return array{ChatSession, bool} [session, whether created on this request]
+     */
+    private function resolveSession(Request $request, ?int $sessionId): array
     {
         if ($sessionId === null) {
             $session = ChatSession::create(['user_id' => $request->user()->id, 'title' => null]);
 
             ChatSession::enforceLimit($request->user()->id);
 
-            return $session;
+            return [$session, true];
         }
 
         $session = ChatSession::where('user_id', $request->user()->id)->findOrFail($sessionId);
 
-        return $session;
+        return [$session, false];
     }
 
     /**
@@ -105,6 +116,7 @@ class ChatController extends Controller
     {
         $messages = $session->messages()
             ->orderBy('created_at')
+            ->orderBy('id')
             ->limit(20)
             ->get()
             ->map(fn (ChatMessage $item): array => ['role' => $item->role, 'content' => $item->content])
@@ -126,5 +138,7 @@ class ChatController extends Controller
         if ($session->title === null) {
             $session->update(['title' => Str::limit($userMessage, 60, '')]);
         }
+
+        $session->touch();
     }
 }

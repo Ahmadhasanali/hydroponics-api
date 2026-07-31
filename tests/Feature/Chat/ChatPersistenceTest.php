@@ -112,5 +112,25 @@ class ChatPersistenceTest extends TestCase
             ->assertStatus(503);
 
         $this->assertDatabaseCount('chat_messages', 0);
+        $this->assertDatabaseCount('chat_sessions', 0);
+    }
+
+    #[Test]
+    public function keeps_existing_session_when_gemini_fails(): void
+    {
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response('{}', 500)]);
+
+        $user = User::factory()->create();
+        $session = ChatSession::factory()->for($user)->create();
+        $session->messages()->createMany([
+            ['role' => 'user', 'content' => 'Halo'],
+            ['role' => 'assistant', 'content' => 'Hai!'],
+        ]);
+
+        $this->actingAs($user)->postJson('/api/chat', ['session_id' => $session->id, 'message' => 'halo'])
+            ->assertStatus(503);
+
+        $this->assertDatabaseHas('chat_sessions', ['id' => $session->id]);
+        $this->assertDatabaseCount('chat_messages', 2);
     }
 }
