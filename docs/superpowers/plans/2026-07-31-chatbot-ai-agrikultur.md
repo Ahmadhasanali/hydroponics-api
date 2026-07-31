@@ -375,7 +375,7 @@ git commit -m "feat: add chat tool contract, registry, and farm list tool"
 
 ---
 
-### Task 2: Konfigurasi Gemini + `GeminiService`
+### Task 2: Konfigurasi Gemini + `GeminiService` (dengan model failover)
 
 **Files:**
 - Create: `config/gemini.php`
@@ -386,6 +386,7 @@ git commit -m "feat: add chat tool contract, registry, and farm list tool"
 **Interfaces:**
 - Consumes: `ChatToolsService::declarations()` (Task 1).
 - Produces: `GeminiService::generate(array $contents): array` — signature `@param array<int, array{role: string, parts: array<int, array<string, mixed>>}> $contents`, `@return array{text: ?string, function_calls: array<int, array{name: string, args: array<string, mixed>}>}`, throws `RuntimeException` pada non-2xx / API key kosong (dipakai `ChatController` task 5).
+- **Model failover:** `config('gemini.models')` adalah array berurutan (prioritas). `generate()` mencoba tiap model secara berurutan; pada status 429/500/502/503/504 lanjut ke model berikutnya. Status lain langsung throw. Semua model habis → throw `RuntimeException`.
 
 - [ ] **Step 1: Tulis test (failing)**
 
@@ -487,7 +488,10 @@ class GeminiServiceTest extends TestCase
     #[Test]
     public function generate_throws_on_api_error(): void
     {
-        config(['gemini.api_key' => 'test-api-key']);
+        config([
+            'gemini.api_key' => 'test-api-key',
+            'gemini.models' => ['gemini-3.6-flash'],
+        ]);
 
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response(['error' => 'boom'], 500),
@@ -498,6 +502,82 @@ class GeminiServiceTest extends TestCase
         app(GeminiService::class)->generate([
             ['role' => 'user', 'parts' => [['text' => 'halo']]],
         ]);
+    }
+
+    #[Test]
+    public function generate_fails_over_to_next_model_on_rate_limit(): void
+    {
+        config([
+            'gemini.api_key' => 'test-api-key',
+            'gemini.models' => ['gemini-3.6-flash', 'gemini-3.5-flash'],
+        ]);
+
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::sequence()
+                ->push(['error' => ['status' => 'RESOURCE_EXHAUSTED']], 429)
+                ->push([
+                    'candidates' => [['content' => ['parts' => [['text' => 'ok dari model kedua']]]]],
+                ], 200)
+                ->whenEmpty(Http::response([], 500)),
+        ]);
+
+        $result = app(GeminiService::class)->generate([
+            ['role' => 'user', 'parts' => [['text' => 'halo']]],
+        ]);
+
+        $this->assertSame('ok dari model kedua', $result['text']);
+
+        $requests = Http::recorded();
+        $this->assertCount(2, $requests);
+        $this->assertStringContainsString('gemini-3.6-flash', $requests[0][0]->url());
+        $this->assertStringContainsString('gemini-3.5-flash', $requests[1][0]->url());
+    }
+
+    #[Test]
+    public function generate_throws_when_all_models_exhausted(): void
+    {
+        config([
+            'gemini.api_key' => 'test-api-key',
+            'gemini.models' => ['gemini-3.6-flash', 'gemini-3.5-flash'],
+        ]);
+
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::sequence()
+                ->push(['error' => ['status' => 'RESOURCE_EXHAUSTED']], 429)
+                ->push(['error' => ['status' => 'RESOURCE_EXHAUSTED']], 429)
+                ->whenEmpty(Http::response([], 500)),
+        ]);
+
+        $this->expectException(RuntimeException::class);
+
+        app(GeminiService::class)->generate([
+            ['role' => 'user', 'parts' => [['text' => 'halo']]],
+        ]);
+
+        $this->assertCount(2, Http::recorded());
+    }
+
+    #[Test]
+    public function generate_does_not_fail_over_on_client_error(): void
+    {
+        config([
+            'gemini.api_key' => 'test-api-key',
+            'gemini.models' => ['gemini-3.6-flash', 'gemini-3.5-flash'],
+        ]);
+
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::sequence()
+                ->push(['error' => ['status' => 'INVALID_ARGUMENT']], 400)
+                ->whenEmpty(Http::response([], 500)),
+        ]);
+
+        $this->expectException(RuntimeException::class);
+
+        app(GeminiService::class)->generate([
+            ['role' => 'user', 'parts' => [['text' => 'halo']]],
+        ]);
+
+        $this->assertCount(1, Http::recorded());
     }
 }
 ```
@@ -516,7 +596,23 @@ Expected: FAIL — `Class "App\Services\GeminiService" not found`.
 
 return [
     'api_key' => env('GEMINI_API_KEY'),
-    'model' => env('GEMINI_MODEL', 'gemini-1.5-flash'),
+    'model' => env('GEMINI_MODEL', 'gemini-3.6-flash'),
+    'models' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('GEMINI_MODELS', implode(',', [
+            'gemini-3.6-flash',
+            'gemini-3.5-flash',
+            'gemini-3-flash',
+            'gemini-2.5-flash',
+            'gemini-2-flash',
+            'gemini-3.5-flash-lite',
+            'gemini-3.1-flash-lite',
+            'gemini-2.5-flash-lite',
+            'gemini-2-flash-lite',
+            'gemini-3.1-pro',
+            'gemini-2.5-pro',
+        ])),
+    ))),
     'max_output_tokens' => (int) env('GEMINI_MAX_OUTPUT_TOKENS', 1024),
     'timeout' => (int) env('GEMINI_TIMEOUT', 30),
     'system_prompt' => <<<'PROMPT'
@@ -533,16 +629,19 @@ PROMPT,
 ];
 ```
 
+Catatan: `models` adalah daftar failover berurutan (model utama pertama). `model` tetap dipakai sebagai fallback tunggal jika `models` kosong di `GeminiService`.
+
 - [ ] **Step 4: Tambah variabel ke `.env.example`**
 
 Tambahkan di akhir file `.env.example`:
 
 ```
 GEMINI_API_KEY=
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-3.6-flash
+GEMINI_MODELS=gemini-3.6-flash,gemini-3.5-flash,gemini-3-flash,gemini-2.5-flash,gemini-2-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-2.5-flash-lite,gemini-2-flash-lite,gemini-3.1-pro,gemini-2.5-pro
 ```
 
-- [ ] **Step 5: Buat `GeminiService`**
+- [ ] **Step 5: Buat `GeminiService` (dengan model failover)**
 
 `app/Services/GeminiService.php`:
 
@@ -558,6 +657,9 @@ class GeminiService
 {
     private const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta';
 
+    /** Status HTTP yang memicu failover ke model berikutnya (rate limit / overload). */
+    private const RETRYABLE_STATUSES = [429, 500, 502, 503, 504];
+
     public function __construct(private readonly ChatToolsService $chatTools)
     {
     }
@@ -566,7 +668,7 @@ class GeminiService
      * @param  array<int, array{role: string, parts: array<int, array<string, mixed>>}>  $contents
      * @return array{text: ?string, function_calls: array<int, array{name: string, args: array<string, mixed>}>}
      *
-     * @throws RuntimeException Ketika API key kosong atau API mengembalikan non-2xx
+     * @throws RuntimeException Ketika API key kosong atau semua model gagal
      */
     public function generate(array $contents): array
     {
@@ -576,6 +678,45 @@ class GeminiService
             throw new RuntimeException('Gemini API key belum dikonfigurasi.');
         }
 
+        $models = $this->models();
+
+        if ($models === []) {
+            throw new RuntimeException('Gemini model belum dikonfigurasi.');
+        }
+
+        $lastException = null;
+
+        foreach ($models as $model) {
+            try {
+                return $this->requestModel($model, $contents, $apiKey);
+            } catch (RateLimitedException $e) {
+                $lastException = $e;
+            }
+        }
+
+        throw $lastException ?? new RuntimeException('Gemini API tidak tersedia.');
+    }
+
+    /**
+     * Daftar model failover; fallback ke model tunggal jika kosong.
+     *
+     * @return array<int, string>
+     */
+    private function models(): array
+    {
+        $models = array_values(array_filter(config('gemini.models', []), fn ($model): bool => $model !== ''));
+
+        return $models !== [] ? $models : array_filter([config('gemini.model')]);
+    }
+
+    /**
+     * @param  array<int, array{role: string, parts: array<int, array<string, mixed>>}>  $contents
+     * @return array{text: ?string, function_calls: array<int, array{name: string, args: array<string, mixed>}>}
+     *
+     * @throws RuntimeException Ketika API mengembalikan status non-retryable atau non-2xx
+     */
+    private function requestModel(string $model, array $contents, string $apiKey): array
+    {
         $payload = [
             'system_instruction' => ['parts' => [['text' => config('gemini.system_prompt')]]],
             'contents' => $contents,
@@ -590,10 +731,16 @@ class GeminiService
 
         $response = Http::timeout(config('gemini.timeout'))
             ->retry(1, 100)
-            ->post(self::ENDPOINT.'/models/'.config('gemini.model').':generateContent', $payload);
+            ->post(self::ENDPOINT.'/models/'.$model.':generateContent?key='.$apiKey, $payload);
 
         if ($response->failed()) {
-            throw new RuntimeException('Gemini API error: '.$response->status().' '.$response->body());
+            $message = 'Gemini API error: '.$response->status().' '.$response->body();
+
+            if (in_array($response->status(), self::RETRYABLE_STATUSES, true)) {
+                throw new RateLimitedException($message);
+            }
+
+            throw new RuntimeException($message);
         }
 
         $json = $response->json();
@@ -620,17 +767,35 @@ class GeminiService
 }
 ```
 
+Catatan:
+- **Failover stateless:** tiap request mulai dari model utama lagi; tidak ada cooldown/cache.
+- **429/500/502/503/504** → `RateLimitedException` → `generate()` mencoba model berikutnya.
+- **Status lain (mis. 400)** → `RuntimeException` langsung, tidak failover (bug kode).
+- `RateLimitedException` adalah class internal (lihat di bawah).
+
+```php
+<?php
+
+namespace App\Services;
+
+use RuntimeException;
+
+final class RateLimitedException extends RuntimeException
+{
+}
+```
+
 - [ ] **Step 6: Jalankan test, pastikan PASS**
 
 Run: `vendor/bin/sail artisan test --compact tests/Unit/Services/GeminiServiceTest.php`
-Expected: 5 tests PASS.
+Expected: 8 tests PASS.
 
 - [ ] **Step 7: Format & commit**
 
 ```bash
 vendor/bin/sail bin pint --dirty --format agent
 git add config/gemini.php .env.example app/Services/GeminiService.php tests/Unit/Services/GeminiServiceTest.php
-git commit -m "feat: add Gemini API service with function calling support"
+git commit -m "feat: add Gemini API service with function calling and model failover"
 ```
 
 ---

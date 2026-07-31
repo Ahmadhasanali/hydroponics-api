@@ -9,11 +9,12 @@ Menambahkan chatbot AI ke Hydroponic Farm Management System yang dapat:
 1. Berdiskusi umum tentang agrikultur, terutama budidaya selada (hidroponik NFT).
 2. Membaca data farm milik pengguna (tank, PPM, pH, riwayat monitoring, nutrisi, pH Down).
 
-Menggunakan **Google Gemini API** (free tier: Gemini 1.5 Flash / 2.0 Flash, 60 req/menit, 1500 req/hari) dengan **Gemini Function Calling** untuk akses data farm. Tidak menggunakan LLM lokal karena keterbatasan spesifikasi perangkat.
+Menggunakan **Google Gemini API** (free tier, kategori text-out models) dengan **Gemini Function Calling** untuk akses data farm. Karena tiap model free tier punya kuota RPM sendiri, **GeminiService menerapkan model failover**: jika model utama kena rate limit, otomatis mencoba model berikutnya dari daftar prioritas. Tidak menggunakan LLM lokal karena keterbatasan spesifikasi perangkat.
 
 ## Keputusan Kunci
 
 - **Provider:** Google Gemini API (gratis, dukungan Bahasa Indonesia baik).
+- **Model failover:** Daftar model berurutan (prioritas) di config; saat satu model kena rate limit (429/5xx), otomatis coba model berikutnya. Stateless — tiap request mulai dari model utama lagi.
 - **Pola interaksi:** Floating chat widget di semua halaman (user yang login), bukan halaman terpisah.
 - **Akses data:** Gemini Function Calling — Gemini memanggil "tools" PHP untuk query data farm secara real-time.
 - **Extensibility:** Setiap tool adalah class terpisah yang terdeteksi otomatis oleh registry (auto-discovery), sehingga menambah tool baru tidak mengubah kode lain.
@@ -24,7 +25,7 @@ Menggunakan **Google Gemini API** (free tier: Gemini 1.5 Flash / 2.0 Flash, 60 r
 
 | File | Fungsi |
 |------|--------|
-| `config/gemini.php` | Konfigurasi: API key, model, max tokens, system prompt |
+| `config/gemini.php` | Konfigurasi: API key, daftar model (prioritas), max tokens, system prompt |
 | `app/Services/GeminiService.php` | HTTP client ke Gemini API: kirim pesan + history + tool declarations, proses respons |
 | `app/Services/ChatToolsService.php` | Registry tools: auto-discovery class tool, generate function declarations, dispatch panggilan |
 | `app/ChatTools/ChatToolContract.php` | Kontrak tool (nama, deskripsi, parameter schema, handler) |
@@ -85,6 +86,31 @@ Mengikuti gaya existing aplikasi (rounded-[2rem], warna aksen `#ffce54`, font Pl
 
 Setiap handler tool wajib memverifikasi bahwa data farm yang diakses adalah farm di mana user terdaftar sebagai member (`farm_users`). Data farm user lain tidak boleh bocor.
 
+## Model Failover (Rate Limit)
+
+Karena tiap model free tier punya kuota RPM/TPM sendiri, `GeminiService` memakai daftar model berurutan sebagai **failover**:
+
+- `config/gemini.php` → `models` (array, urutan prioritas). `model` lama tetap ada sebagai model utama/backward-compat.
+- `.env` → `GEMINI_MODELS=model-a,model-b,...` (comma-separated, diedit tanpa ubah kode).
+- **Alur:** setiap request mulai dari model pertama. Jika respons HTTP **429/500/502/503/504** dan masih ada model berikutnya → coba model berikutnya. Status lain (mis. 400) → langsung gagal (bug, tidak perlu failover). Jika semua model habis → error, controller balas 503 ramah.
+- **Stateless:** tanpa cooldown atau catatan model terakhir; tiap request independen mulai dari model utama.
+
+**Urutan prioritas default (11 model text-out):**
+
+1. `gemini-3.6-flash` — utama (kualitas terbaik & cepat)
+2. `gemini-3.5-flash`
+3. `gemini-3-flash`
+4. `gemini-2.5-flash`
+5. `gemini-2-flash`
+6. `gemini-3.5-flash-lite`
+7. `gemini-3.1-flash-lite`
+8. `gemini-2.5-flash-lite`
+9. `gemini-2-flash-lite`
+10. `gemini-3.1-pro` — fallback terakhir (lebih lambat)
+11. `gemini-2.5-pro`
+
+Semua model wajib mendukung Function Calling (semua model Gemini text-out mendukung).
+
 ## System Prompt
 
 Disimpan di `config/gemini.php`. Isi:
@@ -96,8 +122,9 @@ Disimpan di `config/gemini.php`. Isi:
 ## Error Handling
 
 - Error Gemini API (rate limit, invalid key) → jawaban fallback ramah: "Maaf, layanan AI sedang sibuk. Coba lagi sebentar."
+- **Rate limit satu model (429/5xx)** → failover otomatis ke model berikutnya (lihat Model Failover); hanya saat semua model gagal barulah fallback ramah.
 - Error tool handler (tank tidak ditemukan, akses ditolak) → kirim hasil error ke Gemini agar merangkai jawaban jujur, bukan crash
-- Timeout request → retry 1x, lalu fallback
+- Timeout request → retry 1x per model, lalu failover
 - **Rate limiting per user:** 10 pesan/menit (middleware `throttle`)
 
 ## Security
@@ -119,5 +146,6 @@ Disimpan di `config/gemini.php`. Isi:
 
 ```
 GEMINI_API_KEY=
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-3.6-flash
+GEMINI_MODELS=gemini-3.6-flash,gemini-3.5-flash,gemini-3-flash,gemini-2.5-flash,gemini-2-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-2.5-flash-lite,gemini-2-flash-lite,gemini-3.1-pro,gemini-2.5-pro
 ```
