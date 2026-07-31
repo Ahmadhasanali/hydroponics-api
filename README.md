@@ -365,3 +365,13 @@ Output:
 - activity_logs
 
 Total MVP Tables: 6
+
+## Chatbot AI (Agro Bot)
+
+Floating chat widget (login-only) berbasis Google Gemini API untuk diskusi agrikultur/selada dan membaca data farm pengguna via Function Calling.
+
+Konfigurasi (`.env`):
+- `GEMINI_API_KEY` — API key dari https://aistudio.google.com/apikey
+- `GEMINI_MODEL` — default `gemini-1.5-flash`
+
+Menambah tool baru: buat class di `app/ChatTools/` yang mengimplementasikan `ChatToolContract` — otomatis terdeteksi.
