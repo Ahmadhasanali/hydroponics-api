@@ -37,6 +37,23 @@ class TankStatusToolTest extends TestCase
     }
 
     #[Test]
+    public function returns_iso_timestamp_when_last_condition_is_a_plain_string(): void
+    {
+        $user = User::factory()->create();
+        $farm = Farm::factory()->create(['created_by' => $user->id]);
+        $farm->users()->attach($user->id, ['role' => 'owner']);
+        $tank = Tank::factory()->create([
+            'farm_id' => $farm->id,
+            'created_by' => $user->id,
+        ]);
+        $tank->forceFill(['last_condition_updated_at' => '2026-07-31 07:00:00'])->save();
+
+        $result = (new TankStatusTool())->handle(['tank_id' => $tank->id], $user);
+
+        $this->assertSame('2026-07-31T07:00:00+00:00', $result['data']['last_condition_updated_at']);
+    }
+
+    #[Test]
     public function returns_error_for_tank_outside_users_farms(): void
     {
         $user = User::factory()->create();

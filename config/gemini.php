@@ -2,7 +2,7 @@
 
 return [
     'api_key' => env('GEMINI_API_KEY'),
-    'model' => env('GEMINI_MODEL', 'gemini-1.5-flash'),
+    'model' => env('GEMINI_MODEL', 'gemini-3.6-flash'),
     'max_output_tokens' => (int) env('GEMINI_MAX_OUTPUT_TOKENS', 1024),
     'timeout' => (int) env('GEMINI_TIMEOUT', 30),
     'system_prompt' => <<<'PROMPT'

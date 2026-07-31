@@ -31,7 +31,7 @@ class ChatToolsService
     }
 
     /**
-     * Function declarations sesuai format Gemini API.
+     * Function declarations sesuai format OpenAI-compatible function calling.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -41,10 +41,47 @@ class ChatToolsService
             fn (ChatToolContract $tool): array => [
                 'name' => $tool->name(),
                 'description' => $tool->description(),
-                'parameters' => $tool->parameters(),
+                'parameters' => $this->toJsonSchema($tool->parameters()),
             ],
             array_values($this->tools),
         );
+    }
+
+    /**
+     * Ubah skema parameter Gemini (huruf besar, properties wajib object)
+     * menjadi JSON Schema yang dipahami endpoint OpenAI-compatible.
+     *
+     * @param  array<string, mixed>  $schema
+     * @return array<string, mixed>
+     */
+    private function toJsonSchema(array $schema): array
+    {
+        $typeMap = [
+            'OBJECT' => 'object',
+            'STRING' => 'string',
+            'INTEGER' => 'integer',
+            'NUMBER' => 'number',
+            'BOOLEAN' => 'boolean',
+            'ARRAY' => 'array',
+        ];
+
+        $converted = [];
+
+        foreach ($schema as $key => $value) {
+            if ($key === 'type' && is_string($value)) {
+                $converted[$key] = $typeMap[$value] ?? strtolower($value);
+            } elseif (is_array($value)) {
+                if ($value === []) {
+                    $converted[$key] = $key === 'required' ? [] : new \stdClass();
+                } else {
+                    $converted[$key] = $this->toJsonSchema($value);
+                }
+            } else {
+                $converted[$key] = $value;
+            }
+        }
+
+        return $converted;
     }
 
     /**

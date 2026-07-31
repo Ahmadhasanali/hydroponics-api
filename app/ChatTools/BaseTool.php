@@ -6,6 +6,7 @@ use App\Models\Farm;
 use App\Models\Farm\Tank;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 abstract class BaseTool implements ChatToolContract
@@ -47,7 +48,9 @@ abstract class BaseTool implements ChatToolContract
             'current_ppm' => $tank->current_ppm,
             'current_ph' => $tank->current_ph,
             'current_water_temperature' => $tank->current_water_temperature,
-            'last_condition_updated_at' => $tank->last_condition_updated_at?->toIso8601String(),
+            'last_condition_updated_at' => $tank->last_condition_updated_at !== null
+                ? Carbon::parse($tank->last_condition_updated_at)->toIso8601String()
+                : null,
         ];
     }
 }

@@ -22,14 +22,14 @@ class GeminiServiceTest extends TestCase
     {
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response([
-                'candidates' => [[
-                    'content' => ['parts' => [['text' => 'Halo, ada yang bisa dibantu?']]],
+                'choices' => [[
+                    'message' => ['role' => 'assistant', 'content' => 'Halo, ada yang bisa dibantu?'],
                 ]],
             ], 200),
         ]);
 
         $result = app(GeminiService::class)->generate([
-            ['role' => 'user', 'parts' => [['text' => 'Halo']]],
+            ['role' => 'user', 'content' => 'Halo'],
         ]);
 
         $this->assertSame('Halo, ada yang bisa dibantu?', $result['text']);
@@ -41,20 +41,30 @@ class GeminiServiceTest extends TestCase
     {
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response([
-                'candidates' => [[
-                    'content' => ['parts' => [[
-                        'functionCall' => ['name' => 'get_farms', 'args' => ['farm_id' => 1]],
-                    ]]],
+                'choices' => [[
+                    'message' => [
+                        'role' => 'assistant',
+                        'content' => null,
+                        'tool_calls' => [[
+                            'id' => 'call_1',
+                            'type' => 'function',
+                            'function' => ['name' => 'get_farms', 'arguments' => '{"farm_id": 1}'],
+                            'extra_content' => ['google' => ['thought_signature' => 'sig-123']],
+                        ]],
+                    ],
                 ]],
             ], 200),
         ]);
 
         $result = app(GeminiService::class)->generate([
-            ['role' => 'user', 'parts' => [['text' => 'Farm saya apa saja?']]],
+            ['role' => 'user', 'content' => 'Farm saya apa saja?'],
         ]);
 
         $this->assertNull($result['text']);
-        $this->assertSame([['name' => 'get_farms', 'args' => ['farm_id' => 1]]], $result['function_calls']);
+        $this->assertSame(
+            [['id' => 'call_1', 'name' => 'get_farms', 'args' => ['farm_id' => 1], 'signature' => 'sig-123']],
+            $result['function_calls'],
+        );
     }
 
     #[Test]
@@ -62,19 +72,21 @@ class GeminiServiceTest extends TestCase
     {
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response([
-                'candidates' => [['content' => ['parts' => [['text' => 'ok']]]]],
+                'choices' => [[
+                    'message' => ['role' => 'assistant', 'content' => 'ok'],
+                ]],
             ], 200),
         ]);
 
         app(GeminiService::class)->generate([
-            ['role' => 'user', 'parts' => [['text' => 'halo']]],
+            ['role' => 'user', 'content' => 'halo'],
         ]);
 
         Http::assertSent(function ($request): bool {
             $body = $request->data();
 
-            return isset($body['tools'][0]['functionDeclarations'])
-                && collect($body['tools'][0]['functionDeclarations'])->contains('name', 'get_farms');
+            return ($body['tools'][0]['type'] ?? null) === 'function'
+                && ($body['tools'][0]['function']['name'] ?? null) === 'get_farms';
         });
     }
 
@@ -86,7 +98,7 @@ class GeminiServiceTest extends TestCase
         $this->expectException(RuntimeException::class);
 
         app(GeminiService::class)->generate([
-            ['role' => 'user', 'parts' => [['text' => 'halo']]],
+            ['role' => 'user', 'content' => 'halo'],
         ]);
     }
 
@@ -102,23 +114,28 @@ class GeminiServiceTest extends TestCase
         $this->expectException(RuntimeException::class);
 
         app(GeminiService::class)->generate([
-            ['role' => 'user', 'parts' => [['text' => 'halo']]],
+            ['role' => 'user', 'content' => 'halo'],
         ]);
     }
 
     #[Test]
-    public function generate_includes_api_key_in_request(): void
+    public function generate_sends_api_key_as_bearer_token(): void
     {
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response([
-                'candidates' => [['content' => ['parts' => [['text' => 'ok']]]]],
+                'choices' => [[
+                    'message' => ['role' => 'assistant', 'content' => 'ok'],
+                ]],
             ], 200),
         ]);
 
         app(GeminiService::class)->generate([
-            ['role' => 'user', 'parts' => [['text' => 'halo']]],
+            ['role' => 'user', 'content' => 'halo'],
         ]);
 
-        Http::assertSent(fn ($request): bool => str_contains($request->url(), 'key=test-api-key'));
+        Http::assertSent(fn ($request): bool => str_contains(
+            $request->header('Authorization')[0] ?? '',
+            'Bearer test-api-key',
+        ));
     }
 }

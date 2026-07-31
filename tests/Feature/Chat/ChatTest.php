@@ -32,7 +32,9 @@ class ChatTest extends TestCase
     {
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response([
-                'candidates' => [['content' => ['parts' => [['text' => 'Selada hidroponik membutuhkan PPM 560-840.']]]]],
+                'choices' => [[
+                    'message' => ['role' => 'assistant', 'content' => 'Selada hidroponik membutuhkan PPM 560-840.'],
+                ]],
             ], 200),
         ]);
 
@@ -54,7 +56,7 @@ class ChatTest extends TestCase
         $user = User::factory()->create();
         $farm = Farm::factory()->create(['created_by' => $user->id]);
         $farm->users()->attach($user->id, ['role' => 'owner']);
-        $tank = Tank::factory()->create([
+        Tank::factory()->create([
             'farm_id' => $farm->id,
             'created_by' => $user->id,
             'name' => 'Tank Selada A',
@@ -63,14 +65,23 @@ class ChatTest extends TestCase
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::sequence()
                 ->push([
-                    'candidates' => [[
-                        'content' => ['parts' => [[
-                            'functionCall' => ['name' => 'get_farms', 'args' => []],
-                        ]]],
+                    'choices' => [[
+                        'message' => [
+                            'role' => 'assistant',
+                            'content' => null,
+                            'tool_calls' => [[
+                                'id' => 'call_1',
+                                'type' => 'function',
+                                'function' => ['name' => 'get_farms', 'arguments' => '{}'],
+                                'extra_content' => ['google' => ['thought_signature' => 'sig-123']],
+                            ]],
+                        ],
                     ]],
                 ], 200)
                 ->push([
-                    'candidates' => [['content' => ['parts' => [['text' => 'Farm Anda bernama '.$farm->name.'.']]]]],
+                    'choices' => [[
+                        'message' => ['role' => 'assistant', 'content' => 'Farm Anda bernama '.$farm->name.'.'],
+                    ]],
                 ], 200)
                 ->whenEmpty(Http::response([], 500)),
         ]);
@@ -83,14 +94,18 @@ class ChatTest extends TestCase
         $response->assertOk()->assertJson(['reply' => 'Farm Anda bernama '.$farm->name.'.']);
         $this->assertCount(2, Http::recorded());
 
-        Http::assertSent(function ($request): bool {
+        Http::assertSent(function ($request) use ($farm): bool {
             $body = $request->data();
-            $last = $body['contents'][count($body['contents']) - 1];
-            $parts = $last['parts'] ?? [];
+            $messages = $body['messages'];
+            $last = $messages[count($messages) - 1];
+            $assistant = $messages[count($messages) - 2];
 
-            return isset($parts[0]['functionResponse'])
-                && $parts[0]['functionResponse']['name'] === 'get_farms'
-                && isset($parts[0]['functionResponse']['response']['data'][0]['name']);
+            return ($last['role'] ?? null) === 'tool'
+                && ($last['tool_call_id'] ?? null) === 'call_1'
+                && str_contains($last['content'] ?? '', $farm->name)
+                && ($assistant['role'] ?? null) === 'assistant'
+                && ($assistant['tool_calls'][0]['function']['arguments'] ?? null) === '{}'
+                && ($assistant['tool_calls'][0]['extra_content']['google']['thought_signature'] ?? null) === 'sig-123';
         });
     }
 
@@ -118,7 +133,9 @@ class ChatTest extends TestCase
     {
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response([
-                'candidates' => [['content' => ['parts' => [['text' => 'Halo juga!']]]]],
+                'choices' => [[
+                    'message' => ['role' => 'assistant', 'content' => 'Halo juga!'],
+                ]],
             ], 200),
         ]);
 
@@ -132,7 +149,7 @@ class ChatTest extends TestCase
         $response->assertOk()->assertJson(['reply' => 'Halo juga!']);
 
         Http::assertSent(function ($request): bool {
-            return $request->data()['contents'][0]['role'] === 'user';
+            return $request->data()['messages'][1]['role'] === 'user';
         });
     }
 
@@ -141,7 +158,9 @@ class ChatTest extends TestCase
     {
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response([
-                'candidates' => [['content' => ['parts' => [['text' => 'Dipahami.']]]]],
+                'choices' => [[
+                    'message' => ['role' => 'assistant', 'content' => 'Dipahami.'],
+                ]],
             ], 200),
         ]);
 
@@ -160,7 +179,9 @@ class ChatTest extends TestCase
     {
         Http::fake([
             'generativelanguage.googleapis.com/*' => Http::response([
-                'candidates' => [['content' => ['parts' => [['text' => 'ok']]]]],
+                'choices' => [[
+                    'message' => ['role' => 'assistant', 'content' => 'ok'],
+                ]],
             ], 200),
         ]);
 

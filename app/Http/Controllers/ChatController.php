@@ -28,11 +28,11 @@ class ChatController extends Controller
             'history.*.content' => 'required|string|max:8000',
         ]);
 
-        $contents = $this->buildContents($validated['history'], $validated['message']);
+        $messages = $this->buildMessages($validated['history'], $validated['message']);
 
         try {
             for ($round = 0; $round < self::MAX_TOOL_ROUNDS; $round++) {
-                $response = $this->gemini->generate($contents);
+                $response = $this->gemini->generate($messages);
 
                 if ($response['function_calls'] === []) {
                     return response()->json([
@@ -40,11 +40,20 @@ class ChatController extends Controller
                     ]);
                 }
 
-                $contents[] = [
-                    'role' => 'model',
-                    'parts' => array_map(
+                $messages[] = [
+                    'role' => 'assistant',
+                    'content' => null,
+                    'tool_calls' => array_map(
                         fn (array $call): array => [
-                            'functionCall' => ['name' => $call['name'], 'args' => $call['args']],
+                            'id' => $call['id'],
+                            'type' => 'function',
+                            'function' => [
+                                'name' => $call['name'],
+                                'arguments' => json_encode((object) $call['args']),
+                            ],
+                            ...($call['signature'] ? [
+                                'extra_content' => ['google' => ['thought_signature' => $call['signature']]],
+                            ] : []),
                         ],
                         $response['function_calls'],
                     ),
@@ -52,9 +61,10 @@ class ChatController extends Controller
 
                 foreach ($response['function_calls'] as $call) {
                     $result = $this->chatTools->handle($call['name'], $call['args'], $request->user());
-                    $contents[] = [
-                        'role' => 'user',
-                        'parts' => [['functionResponse' => ['name' => $call['name'], 'response' => $result]]],
+                    $messages[] = [
+                        'role' => 'tool',
+                        'tool_call_id' => $call['id'],
+                        'content' => json_encode($result),
                     ];
                 }
             }
@@ -69,24 +79,21 @@ class ChatController extends Controller
 
     /**
      * @param  array<int, array{role: string, content: string}>  $history
-     * @return array<int, array{role: string, parts: array<int, array<string, mixed>>}>
+     * @return array<int, array{role: string, content: string}>
      */
-    private function buildContents(array $history, string $message): array
+    private function buildMessages(array $history, string $message): array
     {
-        $contents = [];
+        $messages = [];
 
         foreach ($history as $item) {
-            $contents[] = [
-                'role' => $item['role'] === 'assistant' ? 'model' : 'user',
-                'parts' => [['text' => $item['content']]],
-            ];
+            $messages[] = ['role' => $item['role'], 'content' => $item['content']];
         }
 
-        $firstUser = array_search('user', array_column($contents, 'role'), true);
-        $contents = $firstUser !== false ? array_slice($contents, $firstUser) : [];
+        $firstUser = array_search('user', array_column($messages, 'role'), true);
+        $messages = $firstUser !== false ? array_slice($messages, $firstUser) : [];
 
-        $contents[] = ['role' => 'user', 'parts' => [['text' => $message]]];
+        $messages[] = ['role' => 'user', 'content' => $message];
 
-        return array_values($contents);
+        return array_values($messages);
     }
 }
