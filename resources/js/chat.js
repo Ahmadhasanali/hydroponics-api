@@ -253,6 +253,7 @@ const initChatWidget = () => {
 
     sessionsBtn.addEventListener('click', () => {
         sidebar.classList.toggle('hidden');
+        sidebar.classList.toggle('flex');
         renderSessions();
     });
 
