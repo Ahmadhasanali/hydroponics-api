@@ -63,6 +63,26 @@ class ChatMessageControllerTest extends TestCase
     }
 
     #[Test]
+    public function titles_session_from_long_first_message(): void
+    {
+        $user = User::factory()->create();
+        $payload = [
+            'messages' => [
+                ['role' => 'user', 'content' => 'Bagaimana cara menanam selada hidroponik di rumah untuk pemula?'],
+                ['role' => 'assistant', 'content' => 'Hidroponik adalah ...'],
+            ],
+        ];
+
+        $response = $this->actingAs($user)->postJson('/api/chat/sessions/migrate', $payload);
+
+        $response->assertOk()->assertJsonPath('migrated', true);
+        $this->assertDatabaseHas('chat_sessions', [
+            'id' => $response->json('session.id'),
+            'title' => 'Bagaimana cara menanam selada hidroponik di rumah untuk pemu',
+        ]);
+    }
+
+    #[Test]
     public function migrate_validates_payload(): void
     {
         $user = User::factory()->create();

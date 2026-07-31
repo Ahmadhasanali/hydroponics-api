@@ -89,7 +89,7 @@ class ChatSessionController extends Controller
 
         $title = $validated['messages'][0]['content'] ?? null;
         if ($title !== null) {
-            $session->update(['title' => Str::limit($title, 60)]);
+            $session->update(['title' => Str::limit($title, 60, '')]);
         }
 
         return response()->json(['migrated' => true, 'session' => $session->loadCount('messages')]);
