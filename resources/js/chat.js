@@ -259,6 +259,14 @@ const initChatWidget = () => {
         renderSessions();
     });
 
+    messages.addEventListener('click', () => {
+        if (!sidebar.classList.contains('hidden')) {
+            sidebar.classList.add('hidden');
+            sidebar.classList.remove('flex');
+            input.focus();
+        }
+    });
+
     document.getElementById('agroBotNewSession').addEventListener('click', () => newSession());
 
     closeBtn.addEventListener('click', () => {
