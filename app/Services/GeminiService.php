@@ -39,9 +39,11 @@ class GeminiService
             $payload['tools'] = [['functionDeclarations' => $declarations]];
         }
 
+        $url = self::ENDPOINT.'/models/'.config('gemini.model').':generateContent';
+
         $response = Http::timeout(config('gemini.timeout'))
             ->retry(1, 100)
-            ->post(self::ENDPOINT.'/models/'.config('gemini.model').':generateContent', $payload);
+            ->post($url.'?key='.$apiKey, $payload);
 
         if ($response->failed()) {
             throw new RuntimeException('Gemini API error: '.$response->status().' '.$response->body());

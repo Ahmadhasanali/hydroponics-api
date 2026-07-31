@@ -105,4 +105,20 @@ class GeminiServiceTest extends TestCase
             ['role' => 'user', 'parts' => [['text' => 'halo']]],
         ]);
     }
+
+    #[Test]
+    public function generate_includes_api_key_in_request(): void
+    {
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [['content' => ['parts' => [['text' => 'ok']]]]],
+            ], 200),
+        ]);
+
+        app(GeminiService::class)->generate([
+            ['role' => 'user', 'parts' => [['text' => 'halo']]],
+        ]);
+
+        Http::assertSent(fn ($request): bool => str_contains($request->url(), 'key=test-api-key'));
+    }
 }
