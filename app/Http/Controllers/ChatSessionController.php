@@ -28,6 +28,8 @@ class ChatSessionController extends Controller
             'title' => null,
         ]);
 
+        ChatSession::enforceLimit($request->user()->id);
+
         return response()->json(['session' => $session->loadCount('messages')], 201);
     }
 

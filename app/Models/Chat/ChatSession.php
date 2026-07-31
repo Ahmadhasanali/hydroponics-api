@@ -21,6 +21,18 @@ class ChatSession extends Model
         'title',
     ];
 
+    public static function enforceLimit(int $userId): void
+    {
+        $excess = self::where('user_id', $userId)
+            ->orderByDesc('updated_at')
+            ->limit(50)
+            ->pluck('id');
+
+        self::where('user_id', $userId)
+            ->whereNotIn('id', $excess)
+            ->delete();
+    }
+
     /**
      * @return BelongsTo<User, ChatSession>
      */

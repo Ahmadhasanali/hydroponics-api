@@ -88,6 +88,8 @@ class ChatController extends Controller
         if ($sessionId === null) {
             $session = ChatSession::create(['user_id' => $request->user()->id, 'title' => null]);
 
+            ChatSession::enforceLimit($request->user()->id);
+
             return $session;
         }
 
