@@ -21,6 +21,10 @@
                 <p class="text-sm font-semibold">Agro Bot</p>
                 <p class="text-xs text-slate-400">Asisten Agrikultur &amp; Hidroponik</p>
             </div>
+            <button id="agroBotSessions" type="button" title="Sesi chat"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white/10 hover:text-white">
+                <i class="bi bi-clock-history text-sm"></i>
+            </button>
             <button id="agroBotClear" type="button" title="Bersihkan chat"
                 class="ml-auto inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-white/10 hover:text-white">
                 <i class="bi bi-trash3 text-sm"></i>
@@ -31,8 +35,20 @@
             </button>
         </div>
 
-        {{-- Messages --}}
-        <div id="agroBotMessages" class="flex h-80 flex-col gap-3 overflow-y-auto px-4 py-4"></div>
+        {{-- Messages + sessions sidebar --}}
+        <div class="flex h-80 overflow-hidden">
+            <div id="agroBotSidebar" class="hidden h-full w-64 shrink-0 flex-col border-r border-slate-100 bg-slate-50">
+                <div class="flex items-center justify-between px-3 py-3">
+                    <p class="text-xs font-semibold text-slate-500">SESI CHAT</p>
+                    <button id="agroBotNewSession" type="button" title="Sesi baru"
+                        class="inline-flex h-7 items-center gap-1 rounded-lg bg-[#ffce54] px-2 text-xs font-semibold text-[#1a1c1e] transition hover:bg-[#f0b830]">
+                        <i class="bi bi-plus-lg text-xs"></i> Baru
+                    </button>
+                </div>
+                <div id="agroBotSessionList" class="flex flex-1 flex-col gap-1 overflow-y-auto px-2 pb-3"></div>
+            </div>
+            <div id="agroBotMessages" class="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"></div>
+        </div>
 
         {{-- Input --}}
         <form id="agroBotForm" class="border-t border-slate-100 p-3">

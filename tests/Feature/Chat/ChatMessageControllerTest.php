@@ -97,4 +97,17 @@ class ChatMessageControllerTest extends TestCase
             'messages' => array_fill(0, 21, ['role' => 'user', 'content' => 'x']),
         ])->assertUnprocessable();
     }
+
+    #[Test]
+    public function clears_session_messages(): void
+    {
+        $user = User::factory()->create();
+        $session = ChatSession::factory()->for($user)->create();
+        ChatMessage::factory()->count(3)->for($session)->create();
+
+        $this->actingAs($user)->deleteJson("/api/chat/sessions/{$session->id}/messages")
+            ->assertNoContent();
+
+        $this->assertDatabaseCount('chat_messages', 0);
+    }
 }

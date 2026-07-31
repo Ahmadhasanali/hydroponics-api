@@ -64,6 +64,15 @@ class ChatSessionController extends Controller
         return response()->json(['messages' => $messages]);
     }
 
+    public function clear(Request $request, ChatSession $session): Response
+    {
+        abort_if($session->user_id !== $request->user()->id, 404);
+
+        $session->messages()->delete();
+
+        return response()->noContent();
+    }
+
     public function migrate(Request $request): JsonResponse
     {
         $validated = $request->validate([

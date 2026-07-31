@@ -7,40 +7,46 @@ const initChatWidget = () => {
     const toggleBtn = document.getElementById('agroBotToggle');
     const closeBtn = document.getElementById('agroBotClose');
     const clearBtn = document.getElementById('agroBotClear');
+    const sessionsBtn = document.getElementById('agroBotSessions');
     const panel = document.getElementById('agroBotPanel');
     const messages = document.getElementById('agroBotMessages');
     const form = document.getElementById('agroBotForm');
     const input = document.getElementById('agroBotInput');
     const sendBtn = document.getElementById('agroBotSend');
+    const sidebar = document.getElementById('agroBotSidebar');
+    const sessionList = document.getElementById('agroBotSessionList');
 
     const userId = root.dataset.userId;
     const chatUrl = root.dataset.chatUrl;
     const csrf = root.dataset.csrf;
     const STORAGE_KEY = `agrobot_chats_${userId}`;
 
-    const loadMessages = () => {
-        try {
-            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-            saved.forEach(({ role, content }) => appendBubble(role, content, false));
-        } catch {
-            localStorage.removeItem(STORAGE_KEY);
-        }
+    let currentSessionId = null;
+    let sessions = [];
+
+    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf };
+
+    const api = async (url, options = {}) => {
+        const res = await fetch(url, { headers, ...options });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.status === 204 ? null : res.json();
     };
 
-    const saveMessages = () => {
-        const history = [];
-        messages.querySelectorAll('.agro-bubble').forEach((el) => {
-            if (el.dataset.history === 'false') return;
-            history.push({ role: el.dataset.role, content: el.dataset.content });
-        });
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-20)));
+    const escapeHtml = (text) =>
+        text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    const timeAgo = (iso) => {
+        const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+        if (diff < 60) return 'baru saja';
+        if (diff < 3600) return `${Math.floor(diff / 60)} mnt lalu`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} jam lalu`;
+        return `${Math.floor(diff / 86400)} hari lalu`;
     };
 
-    const appendBubble = (role, content, persist = true, tracked = true) => {
+    const appendBubble = (role, content, tracked = true) => {
         const wrap = document.createElement('div');
         wrap.className = 'agro-bubble flex ' + (role === 'user' ? 'justify-end' : 'justify-start');
         wrap.dataset.role = role;
-        wrap.dataset.content = content;
         if (!tracked) wrap.dataset.history = 'false';
 
         const bubble = document.createElement('div');
@@ -59,11 +65,117 @@ const initChatWidget = () => {
         wrap.appendChild(bubble);
         messages.appendChild(wrap);
         messages.scrollTop = messages.scrollHeight;
-
-        if (persist) saveMessages();
     };
 
-    loadMessages();
+    const renderSessions = () => {
+        sessionList.innerHTML = '';
+        sessions.forEach((session) => {
+            const item = document.createElement('div');
+            item.className =
+                'group flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-slate-100 ' +
+                (session.id === currentSessionId ? 'bg-[#ffce54]/30' : '');
+            item.innerHTML =
+                `<i class="bi bi-chat-dots shrink-0 text-slate-400"></i>` +
+                `<span class="min-w-0 flex-1 truncate">${escapeHtml(session.title || 'Sesi baru')}</span>` +
+                `<span class="shrink-0 text-[10px] text-slate-400">${timeAgo(session.updated_at)}</span>` +
+                `<span class="hidden shrink-0 items-center gap-1 group-hover:flex">` +
+                `<button type="button" class="rename-btn rounded p-1 text-slate-400 hover:text-slate-700" data-id="${session.id}" title="Ganti nama"><i class="bi bi-pencil text-xs"></i></button>` +
+                `<button type="button" class="delete-btn rounded p-1 text-slate-400 hover:text-red-500" data-id="${session.id}" title="Hapus"><i class="bi bi-trash3 text-xs"></i></button>` +
+                `</span>`;
+            item.addEventListener('click', (e) => {
+                if (e.target.closest('.rename-btn') || e.target.closest('.delete-btn')) return;
+                switchSession(session.id);
+            });
+            sessionList.appendChild(item);
+        });
+    };
+
+    const loadSessions = async () => {
+        try {
+            const data = await api(chatUrl + '/sessions');
+            sessions = data.sessions;
+            renderSessions();
+            return sessions;
+        } catch {
+            sessions = [];
+            return [];
+        }
+    };
+
+    const migrateLegacy = async (savedChats) => {
+        try {
+            const data = await api(chatUrl + '/sessions/migrate', {
+                method: 'POST',
+                body: JSON.stringify({ messages: savedChats.slice(-20).map(({ role, content }) => ({ role, content })) }),
+            });
+            if (data.migrated) {
+                await loadSessions();
+                if (data.session) await openSession(data.session.id);
+            }
+            localStorage.removeItem(STORAGE_KEY);
+        } catch {
+            // offline: keep localStorage until next attempt
+        }
+    };
+
+    const openSession = async (id) => {
+        currentSessionId = id;
+        messages.innerHTML = '';
+        renderSessions();
+        try {
+            const data = await api(`${chatUrl}/sessions/${id}/messages`);
+            data.messages.forEach(({ role, content }) => appendBubble(role, content));
+        } catch {
+            appendBubble('assistant', 'Gagal memuat riwayat chat.', false);
+        }
+        if (messages.children.length === 0) {
+            appendBubble('assistant', 'Halo! Saya Agro Bot. Tanyakan apa saja tentang budidaya selada hidroponik, atau data farm Anda.', false);
+        }
+    };
+
+    const newSession = async () => {
+        try {
+            const data = await api(chatUrl + '/sessions', { method: 'POST' });
+            sessions.unshift(data.session);
+            await openSession(data.session.id);
+            renderSessions();
+        } catch {
+            appendBubble('assistant', 'Gagal membuat sesi baru.', false);
+        }
+    };
+
+    const switchSession = (id) => openSession(id);
+
+    const renameSession = async (id, title) => {
+        await api(`${chatUrl}/sessions/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ title }),
+        });
+        await loadSessions();
+    };
+
+    const deleteSession = async (id) => {
+        if (!confirm('Hapus sesi ini beserta riwayatnya?')) return;
+        await api(`${chatUrl}/sessions/${id}`, { method: 'DELETE' });
+        if (currentSessionId === id) currentSessionId = null;
+        await loadSessions();
+        if (currentSessionId === null) {
+            messages.innerHTML = '';
+            appendBubble('assistant', 'Halo! Saya Agro Bot. Tanyakan apa saja tentang budidaya selada hidroponik, atau data farm Anda.', false);
+        }
+    };
+
+    sessionList.addEventListener('click', (e) => {
+        const renameBtn = e.target.closest('.rename-btn');
+        const deleteBtn = e.target.closest('.delete-btn');
+        if (renameBtn) {
+            const id = Number(renameBtn.dataset.id);
+            const session = sessions.find((s) => s.id === id);
+            const title = prompt('Nama sesi:', session?.title || '');
+            if (title !== null && title.trim()) renameSession(id, title.trim());
+        }
+        if (deleteBtn) deleteSession(Number(deleteBtn.dataset.id));
+    });
 
     const showTyping = () => {
         const wrap = document.createElement('div');
@@ -80,15 +192,6 @@ const initChatWidget = () => {
 
     const hideTyping = () => document.getElementById('agroTyping')?.remove();
 
-    const history = () => {
-        const items = [];
-        messages.querySelectorAll('.agro-bubble').forEach((el) => {
-            if (el.dataset.history === 'false') return;
-            items.push({ role: el.dataset.role, content: el.dataset.content });
-        });
-        return items.slice(-20);
-    };
-
     const send = async () => {
         const message = input.value.trim();
         if (!message || sendBtn.disabled) return;
@@ -100,19 +203,18 @@ const initChatWidget = () => {
         sendBtn.disabled = true;
 
         try {
-            const res = await fetch(chatUrl, {
+            const data = await api(chatUrl, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrf,
-                },
-                body: JSON.stringify({ message, history: history() }),
+                body: JSON.stringify({ session_id: currentSessionId, message }),
             });
-
-            const data = await res.json();
             hideTyping();
             appendBubble('assistant', data.reply || 'Maaf, terjadi kesalahan. Silakan coba lagi.');
+            if (currentSessionId === null) {
+                currentSessionId = data.session_id;
+                await loadSessions();
+            } else if (data.title !== undefined) {
+                await loadSessions();
+            }
         } catch {
             hideTyping();
             appendBubble('assistant', 'Maaf, terjadi kesalahan koneksi. Silakan coba lagi.');
@@ -122,28 +224,50 @@ const initChatWidget = () => {
         }
     };
 
-    toggleBtn.addEventListener('click', () => {
+    toggleBtn.addEventListener('click', async () => {
         panel.classList.toggle('hidden');
         panel.classList.toggle('flex');
-        if (!panel.classList.contains('hidden') && messages.children.length === 0) {
-            appendBubble(
-                'assistant',
-                'Halo! Saya Agro Bot. Tanyakan apa saja tentang budidaya selada hidroponik, atau data farm Anda seperti PPM, pH, dan riwayat nutrisi.',
-                false,
-                false
-            );
+        if (!panel.classList.contains('hidden')) {
+            let list = await loadSessions();
+            if (list.length === 0) {
+                let saved = [];
+                try {
+                    saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                } catch {
+                    localStorage.removeItem(STORAGE_KEY);
+                }
+                if (saved.length > 0) {
+                    await migrateLegacy(saved);
+                    return;
+                }
+                if (currentSessionId === null) {
+                    messages.innerHTML = '';
+                    appendBubble('assistant', 'Halo! Saya Agro Bot. Tanyakan apa saja tentang budidaya selada hidroponik, atau data farm Anda seperti PPM, pH, dan riwayat nutrisi.', false);
+                }
+            } else if (currentSessionId === null) {
+                await openSession(list[0].id);
+            }
         }
         input.focus();
     });
+
+    sessionsBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('hidden');
+        renderSessions();
+    });
+
+    document.getElementById('agroBotNewSession').addEventListener('click', () => newSession());
 
     closeBtn.addEventListener('click', () => {
         panel.classList.add('hidden');
         panel.classList.remove('flex');
     });
 
-    clearBtn.addEventListener('click', () => {
+    clearBtn.addEventListener('click', async () => {
+        if (currentSessionId === null || !confirm('Kosongkan riwayat chat sesi ini?')) return;
+        await api(`${chatUrl}/sessions/${currentSessionId}/messages`, { method: 'DELETE' });
         messages.innerHTML = '';
-        localStorage.removeItem(STORAGE_KEY);
+        appendBubble('assistant', 'Sesi dikosongkan. Mulai pertanyaan baru di sesi ini.', false);
     });
 
     form.addEventListener('submit', (e) => {
