@@ -131,6 +131,8 @@ const initChatWidget = () => {
         if (messages.children.length === 0) {
             appendBubble('assistant', 'Halo! Saya Agro Bot. Tanyakan apa saja tentang budidaya selada hidroponik, atau data farm Anda.', false);
         }
+        sidebar.classList.add('hidden');
+        sidebar.classList.remove('flex');
     };
 
     const newSession = async () => {

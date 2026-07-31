@@ -36,8 +36,8 @@
         </div>
 
         {{-- Messages + sessions sidebar --}}
-        <div class="flex h-80 overflow-hidden">
-            <div id="agroBotSidebar" class="hidden h-full w-64 shrink-0 flex-col border-r border-slate-100 bg-slate-50">
+        <div class="relative h-80 overflow-hidden">
+            <div id="agroBotSidebar" class="absolute inset-y-0 left-0 z-10 hidden w-64 flex-col border-r border-slate-100 bg-white shadow-lg">
                 <div class="flex items-center justify-between px-3 py-3">
                     <p class="text-xs font-semibold text-slate-500">SESI CHAT</p>
                     <button id="agroBotNewSession" type="button" title="Sesi baru"
@@ -47,7 +47,7 @@
                 </div>
                 <div id="agroBotSessionList" class="flex flex-1 flex-col gap-1 overflow-y-auto px-2 pb-3"></div>
             </div>
-            <div id="agroBotMessages" class="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"></div>
+            <div id="agroBotMessages" class="flex h-full flex-col gap-3 overflow-y-auto px-4 py-4"></div>
         </div>
 
         {{-- Input --}}
