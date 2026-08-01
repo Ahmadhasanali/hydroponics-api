@@ -8,6 +8,9 @@ use App\Models\Farm\NutrientAddition;
 use App\Models\Farm\PhDownLog;
 use App\Models\Farm\Tank;
 use App\Observers\ActivityLogObserver;
+use App\Observers\DailyMonitoringObserver;
+use App\Observers\NutrientAdditionObserver;
+use App\Observers\PhDownLogObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -46,6 +49,9 @@ class AppServiceProvider extends ServiceProvider
         DailyMonitoring::observe(ActivityLogObserver::class);
         NutrientAddition::observe(ActivityLogObserver::class);
         PhDownLog::observe(ActivityLogObserver::class);
+        DailyMonitoring::observe(DailyMonitoringObserver::class);
+        NutrientAddition::observe(NutrientAdditionObserver::class);
+        PhDownLog::observe(PhDownLogObserver::class);
 
         $this->loadMigrationsFrom(
             [
