@@ -115,7 +115,7 @@
     {{-- User / Logout --}}
     <hr class="my-4 border-slate-100">
 
-    <form method="POST" action="{{ route('logout') }}" class="w-full">
+    <form method="POST" action="{{ route('logout') }}" class="w-full js-logout-form">
         @csrf
         <button type="submit"
             class="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-red-50 hover:text-red-600">
