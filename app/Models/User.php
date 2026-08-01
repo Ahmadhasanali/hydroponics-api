@@ -38,6 +38,14 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasMany<PushSubscription,User>
+     */
+    public function pushSubscriptions(): HasMany
+    {
+        return $this->hasMany(PushSubscription::class);
+    }
+
+    /**
      * Determine if the user is an administrator.
      */
     public function isAdmin(): bool
