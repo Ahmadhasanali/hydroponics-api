@@ -29,7 +29,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(Messaging::class, function () {
             $serviceAccount = config('fcm.service_account_json');
 
-            if (! $serviceAccount || ! is_file($serviceAccount)) {
+            if (! $serviceAccount || (! is_file($serviceAccount) && ! str_starts_with(ltrim($serviceAccount), '{'))) {
                 Log::warning('FCM belum dikonfigurasi: isi FCM_SERVICE_ACCOUNT_JSON di .env.');
 
                 return null;

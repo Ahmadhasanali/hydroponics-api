@@ -4,25 +4,29 @@ import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
 
 precacheAndRoute(self.__WB_MANIFEST);
 
-initializeApp({
+const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
     messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
     appId: import.meta.env.VITE_FIREBASE_APP_ID,
-});
+};
 
-const messaging = getMessaging();
+if (firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.messagingSenderId && firebaseConfig.appId) {
+    initializeApp(firebaseConfig);
 
-onBackgroundMessage(messaging, (payload) => {
-    const { title, body } = payload.notification ?? {};
+    const messaging = getMessaging();
 
-    self.registration.showNotification(title ?? 'Hydro Farm', {
-        body: body ?? '',
-        icon: '/icons/icon-192x192.png',
-        badge: '/icons/icon-192x192.png',
-        data: { url: payload.data?.url },
+    onBackgroundMessage(messaging, (payload) => {
+        const { title, body } = payload.notification ?? {};
+
+        self.registration.showNotification(title ?? 'Hydro Farm', {
+            body: body ?? '',
+            icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-192x192.png',
+            data: { url: payload.data?.url },
+        });
     });
-});
+}
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();

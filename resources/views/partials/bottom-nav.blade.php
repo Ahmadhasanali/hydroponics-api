@@ -29,9 +29,12 @@
             </div>
         </div>
 
+        @php
+            $riwayatActive = request()->routeIs('daily-monitoring.index') || request()->routeIs('daily-monitoring.edit');
+        @endphp
         <a href="{{ route('daily-monitoring.index') }}"
-            class="flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold {{ request()->routeIs('daily-monitoring.*') ? 'text-[#d4a020]' : 'text-slate-500' }}">
-            <i class="bi {{ request()->routeIs('daily-monitoring.*') ? 'bi-clock-history-fill' : 'bi-clock-history' }} text-xl"></i>
+            class="flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold {{ $riwayatActive ? 'text-[#d4a020]' : 'text-slate-500' }}">
+            <i class="bi {{ $riwayatActive ? 'bi-clock-history-fill' : 'bi-clock-history' }} text-xl"></i>
             Riwayat
         </a>
 

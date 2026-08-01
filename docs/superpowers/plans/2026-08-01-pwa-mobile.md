@@ -16,7 +16,8 @@
 - Test ditulis sebagai kelas PHPUnit (bukan Pest). Jangan menghapus test yang ada.
 - Setelah mengubah file PHP, jalankan `./vendor/bin/sail bin pint --dirty --format agent`.
 - Jangan commit API key/secrets; hanya variabel di `.env.example`.
-- `phpunit.xml` memakai `QUEUE_CONNECTION=sync` — job berjalan sinkron di test; observer baru tidak boleh merusak test existing (aman karena `sendToUser` early-return jika user tanpa subscription).
+- `phpunit.xml` memakai `QUEUE_CONNECTION=sync` — job berjalan sinkron di test; observer baru tidak boleh merusak test existing.
+- **Adjudicated (user, 2026-08-01):** `Messaging` binding TIDAK throw saat env kosong — return `null` (log warning); `PushNotificationService` menerima `?Messaging` dan early-return jika null. Alasan: singleton di-resolve saat konstruksi service (sebelum `sendToUser` bisa early-return), sehingga binding yang throw akan memecah ~8 file test existing yang membuat record monitoring (SyncQueue melempar ulang exception job).
 - Jangan jalankan `npm run build` / `php artisan migrate` terhadap DB produksi.
 
 ---
@@ -420,7 +421,7 @@ use Kreait\Firebase\Contract\Messaging;
 use Kreait\Firebase\Factory;
 ```
 
-Ganti `register()` menjadi:
+Ganti `register()` menjadi (per keputusan adjudikasi: return `null` + warning, TIDAK throw — lihat Global Constraints):
 
 ```php
     public function register(): void
@@ -428,14 +429,18 @@ Ganti `register()` menjadi:
         $this->app->singleton(Messaging::class, function () {
             $serviceAccount = config('fcm.service_account_json');
 
-            if (! $serviceAccount || ! is_file($serviceAccount)) {
-                throw new RuntimeException('FCM belum dikonfigurasi: isi FCM_SERVICE_ACCOUNT_JSON di .env.');
+            if (! $serviceAccount || (! is_file($serviceAccount) && ! str_starts_with(ltrim($serviceAccount), '{'))) {
+                Log::warning('FCM belum dikonfigurasi: isi FCM_SERVICE_ACCOUNT_JSON di .env.');
+
+                return null;
             }
 
             return (new Factory)->withServiceAccount($serviceAccount)->createMessaging();
         });
     }
 ```
+
+> Gunakan `use Illuminate\Support\Facades\Log;` di AppServiceProvider.
 
 - [ ] **Step 4: Tulis PushNotificationService**
 
@@ -456,7 +461,7 @@ use Kreait\Firebase\Messaging\Notification;
 
 class PushNotificationService
 {
-    public function __construct(private Messaging $messaging)
+    public function __construct(private ?Messaging $messaging)
     {
     }
 
@@ -464,7 +469,7 @@ class PushNotificationService
     {
         $subscriptions = $user->pushSubscriptions()->get();
 
-        if ($subscriptions->isEmpty()) {
+        if ($subscriptions->isEmpty() || ! $this->messaging) {
             return;
         }
 

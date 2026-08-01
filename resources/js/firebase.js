@@ -4,9 +4,10 @@ const firebaseConfig = () => {
         projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
         messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
         appId: import.meta.env.VITE_FIREBASE_APP_ID,
+        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
     };
 
-    return config.apiKey && config.projectId && config.messagingSenderId && config.appId ? config : null;
+    return config.apiKey && config.projectId && config.messagingSenderId && config.appId && config.vapidKey ? config : null;
 };
 
 const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content ?? '';
@@ -65,6 +66,7 @@ const cleanupTokenOnLogout = () => {
                         'X-CSRF-TOKEN': csrfToken(),
                     },
                     body: JSON.stringify({ fcm_token: token }),
+                    signal: AbortSignal.timeout(3000),
                 });
             }
         } catch (error) {

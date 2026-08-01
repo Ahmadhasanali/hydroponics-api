@@ -4,7 +4,7 @@
 
     {{-- Floating button --}}
     <button id="agroBotToggle" type="button" aria-label="Buka chat Agro Bot"
-        class="fixed bottom-6 right-6 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#ffce54] text-[#1a1c1e] shadow-lg shadow-[#ffce54]/30 transition hover:bg-[#f0b830]">
+        class="fixed bottom-20 right-6 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#ffce54] text-[#1a1c1e] shadow-lg shadow-[#ffce54]/30 transition hover:bg-[#f0b830] lg:bottom-6">
         <i class="bi bi-chat-dots text-2xl"></i>
     </button>
 
