@@ -10,6 +10,7 @@ export default defineConfig({
                 "resources/css/app.css",
                 "resources/js/app.js",
                 "resources/js/auth.js",
+                "resources/js/chat.js",
             ],
             refresh: true,
             fonts: [

@@ -32,4 +32,4 @@ auth.json
 .agents/*
 skills-lock.json
 .php-cs-fixer.cache
-.worktrees
+.worktrees/
