@@ -10,8 +10,11 @@ use App\Models\Farm\Tank;
 use App\Observers\ActivityLogObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Kreait\Firebase\Contract\Messaging;
+use Kreait\Firebase\Factory;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,7 +23,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(Messaging::class, function () {
+            $serviceAccount = config('fcm.service_account_json');
+
+            if (! $serviceAccount || ! is_file($serviceAccount)) {
+                Log::warning('FCM belum dikonfigurasi: isi FCM_SERVICE_ACCOUNT_JSON di .env.');
+
+                return null;
+            }
+
+            return (new Factory)->withServiceAccount($serviceAccount)->createMessaging();
+        });
     }
 
     /**
