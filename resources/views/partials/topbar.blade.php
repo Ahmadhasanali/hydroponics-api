@@ -1,10 +1,9 @@
 <header class="border-b border-slate-200/80 bg-white/90 px-4 py-4 shadow-sm shadow-slate-900/5 backdrop-blur-xl lg:px-6">
-    <div class="flex items-center justify-between gap-4 lg:hidden">
-        <button id="openSidebarBtn" class="inline-flex items-center gap-2 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-100">
-            <i class="bi bi-list"></i>
-            Menu
-        </button>
-        <span class="text-base font-semibold text-slate-900">Dashboard</span>
+    <div class="flex items-center justify-center gap-2 lg:hidden">
+        <span class="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[#ffce54] text-[#1a1c1e]">
+            <i class="bi bi-droplet-half"></i>
+        </span>
+        <span class="text-base font-semibold text-slate-900">Hydro Farm</span>
     </div>
 
     <div class="mt-4 hidden gap-4 lg:flex lg:items-center lg:justify-between">

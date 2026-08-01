@@ -7,3 +7,4 @@ require __DIR__.'/monitoring.php';
 require __DIR__.'/reports.php';
 require __DIR__.'/chat.php';
 require __DIR__.'/pwa.php';
+require __DIR__.'/profile.php';

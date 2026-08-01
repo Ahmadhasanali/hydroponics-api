@@ -1,26 +1,6 @@
-{{-- Mobile overlay --}}
-<div id="mobileSidebarOverlay" class="fixed inset-0 z-20 bg-slate-900/40 opacity-0 pointer-events-none transition duration-300 lg:hidden"></div>
-
 {{-- Sidebar --}}
 <aside id="sidebar"
-    class="fixed inset-y-0 left-0 z-30 w-72 -translate-x-full transform overflow-y-auto bg-white px-4 py-6 shadow-2xl backdrop-blur-xl transition-all duration-300 ease-in-out
-           lg:static lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:flex lg:flex-col lg:w-[280px] lg:shadow-none lg:overflow-hidden">
-
-    {{-- Mobile header --}}
-    <div class="flex items-center justify-between lg:hidden">
-        <div class="space-y-2">
-            <a href="{{ route('dashboard') }}" class="inline-flex items-center gap-3 text-lg font-semibold text-slate-900">
-                <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[#ffce54] text-[#1a1c1e] shadow-sm shadow-[#ffce54]/20">
-                    <i class="bi bi-droplet-half"></i>
-                </span>
-                Hydro Farm
-            </a>
-            <p class="text-sm leading-6 text-slate-500">Sistem Manajemen Hidroponik</p>
-        </div>
-        <button id="closeSidebarBtn" class="inline-flex h-10 w-10 items-center justify-center rounded-3xl bg-slate-100 text-slate-700 transition hover:bg-slate-200">
-            <i class="bi bi-x-lg"></i>
-        </button>
-    </div>
+    class="hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[280px] lg:shrink-0 lg:flex-col overflow-y-auto border-r border-slate-200 bg-white px-4 py-6">
 
     {{-- Desktop brand area --}}
     <div class="hidden lg:flex lg:items-center lg:gap-3 lg:shrink-0">

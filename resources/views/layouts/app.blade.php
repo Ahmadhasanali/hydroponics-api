@@ -16,8 +16,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css">
     @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/chat.js'])
 </head>
-<body class="min-h-screen bg-[#f8f6f2] text-slate-900 antialiased">
+<body class="min-h-screen bg-[#f8f6f2] text-slate-900 antialiased pb-16 lg:pb-0">
     @yield('content')
     @include('partials.chat-widget')
+    @include('partials.bottom-nav')
 </body>
 </html>
