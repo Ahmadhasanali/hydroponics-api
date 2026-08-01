@@ -1,3 +1,7 @@
+import { registerSW } from 'virtual:pwa-register';
+
+registerSW({ immediate: true });
+
 // ── Sidebar controller ────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
     // ── Element refs ─────────────────────────────────────────────────────────
