@@ -76,18 +76,20 @@ lapangan perlu akses cepat ke pencatatan PPM/pH dengan pengalaman yang mendekati
 - Tambah dependency `vite-plugin-pwa`.
 - `vite.config.js`: tambah plugin dengan config:
   - `registerType: 'autoUpdate'` — SW auto-update, pengguna selalu dapat versi terbaru.
+  - `strategies: 'injectManifest'` — sumber SW di `resources/js/pwa-sw.js` (precache Workbox + FCM background, satu SW).
   - `manifest`: `name` = "Hydroponic Farm Management", `short_name` = "Hydro Farm",
-    `start_url` = `/dashboard`, `display` = `standalone`, `theme_color` + `background_color`
+    `start_url` = `/`, `display` = `standalone`, `theme_color` + `background_color`
     mengikuti palet app (`#f8f6f2` bg / `#ffce54` aksen), `icons` (192 & 512 px + maskable).
-  - Precache via Workbox: cache built assets + app shell (HTML halaman utama).
-- Icons: butuh asset icon PNG 192 & 512 (maskable). **User perlu menyediakan / approve icon** (bisa derive dari logo droplet `bi-droplet-half` yang dipakai).
-- Meta: `<meta name="theme-color">`, `<link rel="manifest">`, `<link rel="apple-touch-icon">` di `layouts/app.blade.php`.
+  - Precache via Workbox: cache built assets (JS/CSS/font).
+  - SW di-output ke `public/build/sw.js`; scope root dipastikan lewat header `Service-Worker-Allowed: /` di `public/.htaccess`.
+- Icons: file PNG 192 & 512 (+ maskable) di `public/icons/`, di-generate dari `scripts/generate-pwa-icons.py` (PIL) dan di-commit.
+- Meta: `<meta name="theme-color">`, `<link rel="manifest">`, `<link rel="apple-touch-icon">`, `<meta name="csrf-token">` di `layouts/app.blade.php`.
 - `viewport`: tambah `viewport-fit=cover` agar safe-area handling berfungsi.
 
 ### 2. FCM Frontend
 
 - Tambah dependency npm `firebase` (impor hanya `messaging`).
-- `public/firebase-messaging-sw.js` — service worker FCM (wajib di scope root, di-serve apa adanya).
+- **Satu service worker tunggal** (`resources/js/pwa-sw.js`, strategy `injectManifest` dari `vite-plugin-pwa`): menggabungkan precache Workbox + `firebase/messaging/sw` `onBackgroundMessage` + handler `notificationclick`. Ini menghindari konflik dua SW (Workbox vs FCM) pada scope yang sama. Nilai config Firebase di-inline dari `import.meta.env` saat build.
 - `resources/js/firebase.js`:
   - Init Firebase app dari env `VITE_FIREBASE_*`.
   - Minta `Notification.requestPermission()` + dapatkan token via `getToken(messaging, {vapidKey})`.
@@ -95,7 +97,7 @@ lapangan perlu akses cepat ke pencatatan PPM/pH dengan pengalaman yang mendekati
   - `onTokenRefresh` → update token ke server.
   - Tangani `onMessage` (notifikasi saat app terbuka).
   - Registrasi hanya di halaman setelah login.
-- `auth.js` (existing) atau modul terpisah: saat logout → `DELETE /push-subscriptions`.
+- Saat logout (form `.js-logout-form`) → `DELETE /push-subscriptions` untuk token tersimpan di localStorage, lalu submit form.
 
 ### 3. Backend Push
 
