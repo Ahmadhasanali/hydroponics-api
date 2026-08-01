@@ -2,6 +2,8 @@
 
 return [
 
+    'daily_reminder_hour' => env('DAILY_REMINDER_HOUR', '08:00'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Name
