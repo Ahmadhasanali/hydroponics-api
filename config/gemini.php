@@ -3,6 +3,20 @@
 return [
     'api_key' => env('GEMINI_API_KEY'),
     'model' => env('GEMINI_MODEL', 'gemini-3.6-flash'),
+    // List of models in priority order for failover. Override via GEMINI_MODELS env (comma-separated).
+    'models' => array_values(array_filter(array_map('trim', explode(',', (string) env('GEMINI_MODELS', implode(',', [
+        'gemini-3.6-flash',
+        'gemini-3.5-flash',
+        'gemini-3-flash',
+        'gemini-2.5-flash',
+        'gemini-2-flash',
+        'gemini-3.5-flash-lite',
+        'gemini-3.1-flash-lite',
+        'gemini-2.5-flash-lite',
+        'gemini-2-flash-lite',
+        'gemini-3.1-pro',
+        'gemini-2.5-pro',
+    ])))))),
     'max_output_tokens' => (int) env('GEMINI_MAX_OUTPUT_TOKENS', 1024),
     'timeout' => (int) env('GEMINI_TIMEOUT', 30),
     'system_prompt' => <<<'PROMPT'

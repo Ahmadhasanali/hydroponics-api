@@ -138,4 +138,82 @@ class GeminiServiceTest extends TestCase
             'Bearer test-api-key',
         ));
     }
+
+    #[Test]
+    public function generate_fails_over_to_next_model_on_rate_limit(): void
+    {
+        config([
+            'gemini.api_key' => 'test-api-key',
+            'gemini.models' => ['gemini-3.6-flash', 'gemini-3.5-flash'],
+        ]);
+
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::sequence()
+                ->push(['error' => ['message' => 'rate limit']], 429)
+                ->push([
+                    'choices' => [[
+                        'message' => ['role' => 'assistant', 'content' => 'ok dari model kedua'],
+                    ]],
+                ], 200)
+                ->whenEmpty(Http::response([], 500)),
+        ]);
+
+        $result = app(GeminiService::class)->generate([
+            ['role' => 'user', 'content' => 'halo'],
+        ]);
+
+        $this->assertSame('ok dari model kedua', $result['text']);
+
+        $requests = Http::recorded();
+        $this->assertCount(2, $requests);
+        $this->assertSame('gemini-3.6-flash', $requests[0][0]->data()['model']);
+        $this->assertSame('gemini-3.5-flash', $requests[1][0]->data()['model']);
+    }
+
+    #[Test]
+    public function generate_throws_when_all_models_exhausted(): void
+    {
+        config([
+            'gemini.api_key' => 'test-api-key',
+            'gemini.models' => ['gemini-3.6-flash', 'gemini-3.5-flash'],
+        ]);
+
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::sequence()
+                ->push(['error' => ['message' => 'rate limit']], 429)
+                ->push(['error' => ['message' => 'rate limit']], 429)
+                ->whenEmpty(Http::response([], 500)),
+        ]);
+
+        $this->expectException(RuntimeException::class);
+
+        app(GeminiService::class)->generate([
+            ['role' => 'user', 'content' => 'halo'],
+        ]);
+
+        $this->assertCount(2, Http::recorded());
+    }
+
+    #[Test]
+    public function generate_does_not_fail_over_on_client_error(): void
+    {
+        config([
+            'gemini.api_key' => 'test-api-key',
+            'gemini.models' => ['gemini-3.6-flash', 'gemini-3.5-flash'],
+        ]);
+
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::sequence()
+                ->push(['error' => ['message' => 'bad request']], 400)
+                ->whenEmpty(Http::response([], 500)),
+        ]);
+
+        $this->expectException(RuntimeException::class);
+
+        app(GeminiService::class)->generate([
+            ['role' => 'user', 'content' => 'halo'],
+        ]);
+
+        $this->assertCount(1, Http::recorded());
+    }
 }
