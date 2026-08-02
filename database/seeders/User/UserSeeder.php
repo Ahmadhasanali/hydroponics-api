@@ -20,6 +20,7 @@ class UserSeeder extends Seeder
         User::firstOrCreate(
             ['name' => 'hasan'],
             [
+                'email' => 'hasan@mail.local',
                 'password' => Hash::make('password'),
                 'remember_token' => Str::random(10),
             ]

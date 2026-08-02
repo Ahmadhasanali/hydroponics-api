@@ -17,6 +17,7 @@ class UserMigrationTest extends TestCase
         $expectedColumns = [
             'id',
             'name',
+            'email',
             'password',
             'is_admin',
             'remember_token',
