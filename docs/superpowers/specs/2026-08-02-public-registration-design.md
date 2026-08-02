@@ -40,6 +40,10 @@ password sudah berjalan (spec 2026-08-02-email-login-password-reset).
 - **Scheduler sync blocklist setiap 6 bulan** (command artisan
   `app:sync-disposable-email-domains` + schedule; Laravel 12+ punya
   `everySixMonths()`, fallback `twiceYearly()`).
+- **Forgot password dinonaktifkan untuk akun admin** (`is_admin = true`):
+  admin tidak bisa reset password mandiri via email — hardening terhadap
+  kompromi email admin & mencegah tindakan sewenang-wenang. Hanya user biasa
+  yang bisa reset mandiri.
 
 ## Lingkup
 
@@ -57,6 +61,8 @@ password sudah berjalan (spec 2026-08-02-email-login-password-reset).
   dengan `ResetPasswordNotification`), dikirim via Resend.
 - View halaman verifikasi (notice) + kirim ulang link.
 - `UserController::store` → `email_verified_at = now()`.
+- Forgot password: admin ditolak di pengiriman link **dan** di endpoint reset
+  (defense in depth).
 - Tests.
 
 ### Out of Scope / Deferred
@@ -176,6 +182,20 @@ Route::post('/email/verification-notification', [EmailVerificationController::cl
   flash sukses ("Link verifikasi telah dikirim ulang."). Dipasang pada route
   `verification.send` dengan middleware `auth` + `throttle:6,1`.
 
+### 12. Forgot password — blokir admin (modifikasi `PasswordResetController`)
+- **`sendResetLinkEmail`**: jika email yang diminta milik user dengan
+  `is_admin = true`, link **tidak dikirim** — namun tetap redirect back dengan
+  flash sukses generik yang sama ("Jika email terdaftar, link reset telah
+  dikirim ke email Anda.") agar keberadaan akun admin tidak bocor
+  (anti-enumeration).
+- **`reset`** (defense in depth): token yang dibuat untuk akun admin tidak
+  dapat dipakai — setelah `Password::broker()->reset(...)` berhasil, cek
+  `$user->is_admin`; jika admin, batal (password tidak diubah) dan beri error
+  validasi generik. Dengan ini token lama/bocor pun tidak berguna untuk admin.
+- Jalur pemulihan admin yang lupa password: **reset manual via DB**
+  (tinker/query langsung, di-set hash baru) oleh admin lain. Dicatat sebagai
+  prosedur manual — tidak dibangun fitur baru.
+
 ## Alur Data
 
 **Registrasi:**
@@ -204,6 +224,10 @@ Route::post('/email/verification-notification', [EmailVerificationController::cl
   redirect halaman verifikasi; jalur pemulihan = tombol kirim ulang.
 - **Link verifikasi invalid/expired**: pesan standar Laravel, user bisa
   minta kirim ulang.
+- **Admin memakai forgot password**: pesan sukses generik, link tidak dikirim
+  (anti-enumeration — keberadaan akun admin tidak bocor).
+- **Admin memakai token reset (bocor/lama)**: ditolak di endpoint reset,
+  password tidak diubah.
 - **Email tidak valid secara format**: pesan validasi standar.
 
 ## Testing
@@ -227,6 +251,13 @@ Route::post('/email/verification-notification', [EmailVerificationController::cl
     verifikasi).
 - **`tests/Feature/User/UserTest.php` (update)**: user buatan admin langsung
   terverifikasi.
+- **`tests/Feature/Auth/PasswordResetTest.php` (update)**:
+  - Forgot password dengan email admin → pesan sukses generik **dan tidak ada
+    notifikasi terkirim** (Mail fake: `assertNothingSent`).
+  - Forgot password dengan email user biasa → notifikasi terkirim (tidak
+    berubah dari perilaku sebelumnya).
+  - Token yang dibuat untuk admin tidak bisa dipakai di endpoint reset
+    (password tidak berubah, error validasi).
 - **Migration test**: backfill `email_verified_at` untuk user lama.
 - **Existing tests** (`LoginTest`, dsb.) tetap hijau; `UserFactory` sudah punya
   `email_verified_at => null` (default) — state `verified()` ditambah bila perlu.
@@ -251,3 +282,5 @@ Dependency baru: tidak ada (blocklist dibundel sebagai config, bukan package).
   sah yang terblokir, dihapus manual dari config.
 - `email_verified_at` user lama di-backfill ke `now()` — user existing tidak
   terkunci.
+- **Admin yang lupa password** tidak bisa reset mandiri; pemulihan manual via
+  DB oleh admin lain. Prosedur terdokumentasi, tidak ada fitur baru.
