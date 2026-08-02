@@ -40,6 +40,7 @@ class UserController extends Controller
             'password' => Hash::make($randomChar),
         ];
         $user = User::query()->create($fields);
+        $user->markEmailAsVerified();
 
         return redirect()->route('user.index')->with('password', $randomChar);
     }
