@@ -73,6 +73,10 @@
                         {{ old('remember') ? 'checked' : '' }}>
                     Ingat saya
                 </label>
+
+                <a href="{{ route('password.request') }}" class="text-sm font-semibold text-[#ffce54] transition hover:text-[#f0b830]">
+                    Lupa kata sandi?
+                </a>
             </div>
 
             <button type="submit" id="btnSubmit"

@@ -94,6 +94,14 @@ class LoginTest extends TestCase
         $response->assertSessionHasErrors(['email', 'password']);
     }
 
+    public function test_login_screen_links_to_forgot_password(): void
+    {
+        $response = $this->get(route('login'));
+
+        $response->assertOk();
+        $response->assertSee(route('password.request'));
+    }
+
     public function test_users_can_logout(): void
     {
         $user = User::factory()->create();
