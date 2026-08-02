@@ -1,6 +1,6 @@
 @extends('layouts.auth')
 
-@section('title', 'Masuk')
+@section('title', 'Buat Akun')
 
 @section('content')
 <div class="relative flex min-h-screen items-center justify-center px-4 py-10">
@@ -14,8 +14,8 @@
             <div class="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-[#ffce54] text-2xl text-[#1a1c1e] shadow-lg shadow-[#ffce54]/20">
                 <i class="bi bi-droplet-half"></i>
             </div>
-            <h1 class="mt-6 text-3xl font-semibold tracking-tight text-white">Selamat Datang</h1>
-            <p class="mt-3 text-sm leading-6 text-slate-300">Masuk untuk mengelola sistem hidroponik Anda</p>
+            <h1 class="mt-6 text-3xl font-semibold tracking-tight text-white">Buat Akun</h1>
+            <p class="mt-3 text-sm leading-6 text-slate-300">Daftar untuk mengelola sistem hidroponik Anda</p>
         </div>
 
         @if ($errors->any())
@@ -27,8 +27,23 @@
             </div>
         @endif
 
-        <form action="{{ route('login') }}" method="POST" id="loginForm" class="mt-8 space-y-5" novalidate>
+        <form action="{{ route('register') }}" method="POST" class="mt-8 space-y-5" novalidate>
             @csrf
+
+            <div>
+                <label for="name" class="block text-sm font-semibold text-white/80">Nama</label>
+                <div class="relative mt-2">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-white/40">
+                        <i class="bi bi-person-fill"></i>
+                    </span>
+                    <input type="text" name="name" id="name" value="{{ old('name') }}" required autofocus autocomplete="name"
+                        class="block w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 pl-11 text-sm text-white placeholder-slate-400 transition focus:border-[#ffce54]/50 focus:outline-none focus:ring-2 focus:ring-[#ffce54]/20"
+                        placeholder="Masukkan nama">
+                </div>
+                @error('name')
+                    <p class="mt-2 text-xs text-rose-300">{{ $message }}</p>
+                @enderror
+            </div>
 
             <div>
                 <label for="email" class="block text-sm font-semibold text-white/80">Email</label>
@@ -36,7 +51,7 @@
                     <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-white/40">
                         <i class="bi bi-envelope-fill"></i>
                     </span>
-                    <input type="email" name="email" id="email" value="{{ old('email') }}" required autofocus autocomplete="email"
+                    <input type="email" name="email" id="email" value="{{ old('email') }}" required autocomplete="email"
                         class="block w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 pl-11 text-sm text-white placeholder-slate-400 transition focus:border-[#ffce54]/50 focus:outline-none focus:ring-2 focus:ring-[#ffce54]/20"
                         placeholder="Masukkan email">
                 </div>
@@ -46,51 +61,54 @@
             </div>
 
             <div>
-                <label for="password" class="block text-sm font-semibold text-white/80">Kata Sandi</label>
+                <label for="password" class="block text-sm font-semibold text-white/80">Password</label>
                 <div class="relative mt-2">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-white/40">
                         <i class="bi bi-lock-fill"></i>
                     </span>
-                    <input type="password" name="password" id="password" required autocomplete="current-password"
+                    <input type="password" name="password" id="password" required autocomplete="new-password"
                         class="block w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 pl-11 pr-12 text-sm text-white placeholder-slate-400 transition focus:border-[#ffce54]/50 focus:outline-none focus:ring-2 focus:ring-[#ffce54]/20"
-                        placeholder="Masukkan kata sandi">
+                        placeholder="Masukkan password">
                     <button type="button" id="togglePassword"
                         class="absolute inset-y-0 right-0 flex items-center pr-4 text-white/40 transition hover:text-white/60"
-                        aria-pressed="false" aria-label="Tampilkan kata sandi">
+                        aria-pressed="false" aria-label="Tampilkan password">
                         <i id="toggleIcon" class="bi bi-eye"></i>
                     </button>
                 </div>
-                <p id="passwordClientError" class="mt-2 hidden text-xs text-rose-300">Kata sandi wajib diisi.</p>
                 @error('password')
                     <p class="mt-2 text-xs text-rose-300">{{ $message }}</p>
                 @enderror
             </div>
 
-            <div class="flex items-center justify-between">
-                <label class="flex items-center gap-2 text-sm text-white/70">
-                    <input type="checkbox" name="remember" id="remember"
-                        class="h-4 w-4 rounded border-white/20 bg-white/5 text-[#ffce54] focus:ring-[#ffce54]/30"
-                        {{ old('remember') ? 'checked' : '' }}>
-                    Ingat saya
-                </label>
-
-                <a href="{{ route('password.request') }}" class="text-sm font-semibold text-[#ffce54] transition hover:text-[#f0b830]">
-                    Lupa kata sandi?
-                </a>
+            <div>
+                <label for="password_confirmation" class="block text-sm font-semibold text-white/80">Konfirmasi Password</label>
+                <div class="relative mt-2">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-white/40">
+                        <i class="bi bi-lock-fill"></i>
+                    </span>
+                    <input type="password" name="password_confirmation" id="password_confirmation" required autocomplete="new-password"
+                        class="block w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 pl-11 pr-12 text-sm text-white placeholder-slate-400 transition focus:border-[#ffce54]/50 focus:outline-none focus:ring-2 focus:ring-[#ffce54]/20"
+                        placeholder="Ulangi password">
+                    <button type="button" id="togglePasswordConfirm"
+                        class="absolute inset-y-0 right-0 flex items-center pr-4 text-white/40 transition hover:text-white/60"
+                        aria-pressed="false" aria-label="Tampilkan konfirmasi password">
+                        <i id="toggleConfirmIcon" class="bi bi-eye"></i>
+                    </button>
+                </div>
+                @error('password_confirmation')
+                    <p class="mt-2 text-xs text-rose-300">{{ $message }}</p>
+                @enderror
             </div>
 
-            <button type="submit" id="btnSubmit"
+            <button type="submit"
                 class="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ffce54] px-4 py-3 text-sm font-bold text-[#1a1c1e] shadow-sm shadow-[#ffce54]/20 transition hover:bg-[#f0b830] focus:outline-none focus:ring-2 focus:ring-[#ffce54]/30">
-                <span id="btnText">Masuk</span>
-                <span id="btnSpinner" class="hidden">
-                    <i class="bi bi-arrow-repeat animate-spin"></i>
-                </span>
+                Daftar
             </button>
         </form>
 
         <p class="mt-6 text-center text-sm text-slate-300">
-            Belum punya akun?
-            <a href="{{ route('register') }}" class="font-semibold text-[#ffce54] transition hover:text-[#f0b830]">Daftar sekarang</a>
+            Sudah punya akun?
+            <a href="{{ route('login') }}" class="font-semibold text-[#ffce54] transition hover:text-[#f0b830]">Masuk</a>
         </p>
     </div>
 </div>

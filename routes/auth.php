@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PasswordResetController;
+use App\Http\Controllers\RegistrationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -21,6 +22,9 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
+    Route::get('/register', [RegistrationController::class, 'showRegisterForm'])->name('register');
+    Route::post('/register', [RegistrationController::class, 'register'])->middleware('throttle:5,1');
+
     Route::get('/forgot-password', [PasswordResetController::class, 'showLinkRequestForm'])->name('password.request');
     Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail'])->middleware('throttle:6,1')->name('password.email');
     Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
@@ -30,3 +34,9 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
+
+Route::middleware('auth')->group(function () {
+    Route::get('/email/verify', function () {
+        return view('auth.verify');
+    })->name('verification.notice');
+});
