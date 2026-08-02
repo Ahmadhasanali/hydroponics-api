@@ -23,6 +23,7 @@ class UserAdminSeeder extends Seeder
             'email' => 'superadmin@mail.local',
             'password' => Hash::make('password'),
             'is_admin' => true,
+            'email_verified_at' => now(),
         ]);
     }
 }

@@ -23,6 +23,7 @@ class UserSeeder extends Seeder
                 'email' => 'hasan@mail.local',
                 'password' => Hash::make('password'),
                 'remember_token' => Str::random(10),
+                'email_verified_at' => now(),
             ]
         );
     }

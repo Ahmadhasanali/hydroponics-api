@@ -12,6 +12,10 @@ class EmailVerificationController extends Controller
      */
     public function send(Request $request): RedirectResponse
     {
+        if ($request->user()->hasVerifiedEmail()) {
+            return redirect()->intended(route('dashboard'));
+        }
+
         $request->user()->sendEmailVerificationNotification();
 
         return back()->with('status', __('Link verifikasi telah dikirim ulang.'));
