@@ -142,4 +142,37 @@ class PasswordResetTest extends TestCase
 
         $response->assertSessionHasErrors(['email', 'password']);
     }
+
+    public function test_forgot_password_does_not_send_link_for_admin(): void
+    {
+        Notification::fake();
+        $admin = User::factory()->admin()->create(['email' => 'admin@mail.local']);
+
+        $response = $this->post(route('password.email'), ['email' => 'admin@mail.local']);
+
+        $response->assertSessionHas('status');
+        Notification::assertNothingSent();
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => 'admin@mail.local']);
+    }
+
+    public function test_admin_token_cannot_reset_password(): void
+    {
+        $admin = User::factory()->admin()->create([
+            'email' => 'admin@mail.local',
+            'password' => Hash::make('old-password'),
+        ]);
+        $token = Password::broker()->createToken($admin);
+
+        $response = $this->post(route('password.store'), [
+            'token' => $token,
+            'email' => 'admin@mail.local',
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ]);
+
+        $response->assertSessionHasErrors('email');
+        $this->assertGuest();
+        $this->assertTrue(Auth::attempt(['email' => 'admin@mail.local', 'password' => 'old-password']));
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => 'admin@mail.local']);
+    }
 }

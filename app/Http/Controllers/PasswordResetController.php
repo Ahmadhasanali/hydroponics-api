@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,7 +27,11 @@ class PasswordResetController extends Controller
      */
     public function sendResetLinkEmail(ForgotPasswordRequest $request): RedirectResponse
     {
-        Password::broker()->sendResetLink($request->only('email'));
+        $user = User::query()->where('email', $request->string('email'))->first();
+
+        if ($user === null || ! $user->is_admin) {
+            Password::broker()->sendResetLink($request->only('email'));
+        }
 
         return back()->with('status', __('Jika email terdaftar, kami telah mengirim link reset password ke email Anda.'));
     }
@@ -47,6 +52,12 @@ class PasswordResetController extends Controller
      */
     public function reset(ResetPasswordRequest $request): RedirectResponse
     {
+        $user = User::query()->where('email', $request->string('email'))->first();
+
+        if ($user !== null && $user->is_admin) {
+            return back()->withErrors(['email' => __('Link reset password tidak valid atau sudah kedaluwarsa.')]);
+        }
+
         $status = Password::broker()->reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user, $password): void {
