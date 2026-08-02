@@ -33,6 +33,49 @@ class PushSubscriptionControllerTest extends TestCase
         ]);
     }
 
+    public function test_user_cannot_claim_another_users_token(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $subscription = PushSubscription::factory()->create(['user_id' => $owner->id]);
+
+        $this->actingAs($other)->postJson(route('push-subscriptions.store'), [
+            'fcm_token' => $subscription->fcm_token,
+            'platform' => 'ios',
+            'device_info' => 'attacker-device',
+        ])->assertConflict()->assertJson(['success' => false]);
+
+        $this->assertDatabaseHas('push_subscriptions', [
+            'id' => $subscription->id,
+            'user_id' => $owner->id,
+            'fcm_token' => $subscription->fcm_token,
+            'platform' => $subscription->platform,
+        ]);
+    }
+
+    public function test_user_can_repost_own_token(): void
+    {
+        $user = User::factory()->create();
+        $subscription = PushSubscription::factory()->create([
+            'user_id' => $user->id,
+            'platform' => 'android',
+        ]);
+
+        $this->actingAs($user)->postJson(route('push-subscriptions.store'), [
+            'fcm_token' => $subscription->fcm_token,
+            'platform' => 'web',
+            'device_info' => 'updated-device',
+        ])->assertOk()->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('push_subscriptions', [
+            'id' => $subscription->id,
+            'user_id' => $user->id,
+            'fcm_token' => $subscription->fcm_token,
+            'platform' => 'web',
+            'device_info' => 'updated-device',
+        ]);
+    }
+
     public function test_fcm_token_is_required(): void
     {
         $user = User::factory()->create();

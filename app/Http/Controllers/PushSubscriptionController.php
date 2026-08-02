@@ -16,6 +16,15 @@ class PushSubscriptionController extends Controller
             'device_info' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $subscription = PushSubscription::where('fcm_token', $validated['fcm_token'])->first();
+
+        if ($subscription && $subscription->user_id !== $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token sudah terdaftar untuk pengguna lain.',
+            ], 409);
+        }
+
         PushSubscription::updateOrCreate(
             ['fcm_token' => $validated['fcm_token']],
             [

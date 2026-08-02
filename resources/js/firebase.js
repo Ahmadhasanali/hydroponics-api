@@ -12,7 +12,7 @@ const firebaseConfig = () => {
 
 const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
-const registerDeviceToken = async (messaging) => {
+const registerDeviceToken = async (messaging, getToken, serviceWorkerRegistration) => {
     try {
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
@@ -21,6 +21,7 @@ const registerDeviceToken = async (messaging) => {
 
         const token = await getToken(messaging, {
             vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+            serviceWorkerRegistration,
         });
 
         if (!token) {
@@ -29,7 +30,7 @@ const registerDeviceToken = async (messaging) => {
 
         localStorage.setItem('fcm_token', token);
 
-        await fetch('/push-subscriptions', {
+        const response = await fetch('/push-subscriptions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -38,6 +39,10 @@ const registerDeviceToken = async (messaging) => {
             },
             body: JSON.stringify({ fcm_token: token, platform: 'android' }),
         });
+
+        if (!response.ok) {
+            console.error('FCM registration failed with status:', response.status);
+        }
     } catch (error) {
         console.error('FCM registration failed:', error);
     }
@@ -86,7 +91,7 @@ const initFirebaseMessaging = async () => {
 
     try {
         const { initializeApp } = await import('firebase/app');
-        const { getMessaging, getToken, onMessage, isSupported } = await import('firebase/messaging');
+        const { getMessaging, getToken, onMessage, onTokenRefresh, isSupported } = await import('firebase/messaging');
 
         if (!(await isSupported())) {
             return;
@@ -94,6 +99,41 @@ const initFirebaseMessaging = async () => {
 
         const app = initializeApp(config);
         const messaging = getMessaging(app);
+
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        const registration = registrations.find((reg) => reg.active) ?? registrations[0];
+
+        onTokenRefresh(messaging, async () => {
+            try {
+                const token = await getToken(messaging, {
+                    vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+                    serviceWorkerRegistration: registration,
+                });
+
+                if (!token) {
+                    localStorage.removeItem('fcm_token');
+                    return;
+                }
+
+                localStorage.setItem('fcm_token', token);
+
+                const response = await fetch('/push-subscriptions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': csrfToken(),
+                    },
+                    body: JSON.stringify({ fcm_token: token, platform: 'android' }),
+                });
+
+                if (!response.ok) {
+                    console.error('FCM token refresh registration failed with status:', response.status);
+                }
+            } catch (error) {
+                console.error('FCM token refresh failed:', error);
+            }
+        });
 
         onMessage(messaging, (payload) => {
             const { title, body } = payload.notification ?? {};
@@ -105,7 +145,7 @@ const initFirebaseMessaging = async () => {
             }
         });
 
-        await registerDeviceToken(messaging);
+        await registerDeviceToken(messaging, getToken, registration);
     } catch (error) {
         console.error('Firebase init failed:', error);
     }
