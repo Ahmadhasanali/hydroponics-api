@@ -98,12 +98,11 @@ RESEND_API_KEY=re_xxxx
 
 ## Testing
 
-- **Feature test baru** (mis. `tests/Feature/Mail/ResendMailerTest.php`):
-  - `Mail::fake()` → resolusi mailer via `app('mail.manager')->mailer('resend')`
-    mengembalikan instance `ResendTransport`.
-  - `config('mail.default')` === `resend` (dengan env di-set via `putenv`/`config()->set`
-    dalam test atau `.env.testing`).
-  - `config('services.resend.key')` terbaca dari `RESEND_API_KEY`.
+- **Feature test baru** (`tests/Feature/Mail/ResendMailerTest.php`):
+  - `app('mail.manager')->mailer('resend')->getSymfonyTransport()` mengembalikan
+    instance `Illuminate\Mail\Transport\ResendTransport`.
+  - `config('services.resend.key')` terbaca dari `RESEND_API_KEY` (ditetapkan
+    `re_test_123` di `phpunit.xml`; `MAIL_MAILER` test tetap `array`).
 - **Manual check (user):** jalankan
   `vendor/bin/sail artisan tinker --execute 'Mail::raw("Test Resend", fn ($m) => $m->to("email-anda@x.com")->subject("Uji"));'`
   lalu cek inbox (dan folder spam) setelah `RESEND_API_KEY` diisi.
