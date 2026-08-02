@@ -4,7 +4,7 @@ use App\Http\Controllers\Farm\FarmController;
 use App\Http\Controllers\FarmUserController;
 use Illuminate\Support\Facades\Route;
 
-Route::group(['middleware' => ['auth'], 'prefix' => 'farm', 'as' => 'farm.'], function () {
+Route::group(['middleware' => ['auth', 'verified'], 'prefix' => 'farm', 'as' => 'farm.'], function () {
     Route::get('/', [FarmController::class, 'index'])->name('index');
     Route::get('/create', [FarmController::class, 'create'])->name('create');
     Route::post('/store', [FarmController::class, 'store'])->name('store');

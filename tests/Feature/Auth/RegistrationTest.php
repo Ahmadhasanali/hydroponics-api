@@ -3,7 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\VerifyEmail;
+use App\Notifications\VerifyEmailNotification;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
@@ -39,7 +39,7 @@ class RegistrationTest extends TestCase
         ]);
         Notification::assertSentTo(
             User::where('email', 'petani@example.com')->first(),
-            VerifyEmail::class,
+            VerifyEmailNotification::class,
         );
     }
 

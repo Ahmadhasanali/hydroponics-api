@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Notifications\ResetPasswordNotification;
+use App\Notifications\VerifyEmailNotification;
 use Illuminate\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -22,7 +23,6 @@ class User extends Authenticatable implements MustVerifyEmailContract
     use HasFactory;
 
     use MustVerifyEmail;
-
     use Notifiable;
     use SoftDeletes;
 
@@ -72,6 +72,14 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function sendPasswordResetNotification($token): void
     {
         $this->notify(new ResetPasswordNotification($token));
+    }
+
+    /**
+     * Send the email verification notification.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmailNotification);
     }
 
     /**

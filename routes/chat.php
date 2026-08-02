@@ -4,12 +4,12 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ChatSessionController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/api/chat/sessions', [ChatSessionController::class, 'index'])->name('chat.sessions.index');
     Route::get('/api/chat/sessions/{session}/messages', [ChatSessionController::class, 'messages'])->name('chat.sessions.messages');
 });
 
-Route::middleware(['auth', 'throttle:10,1'])->group(function () {
+Route::middleware(['auth', 'verified', 'throttle:10,1'])->group(function () {
     Route::post('/api/chat', ChatController::class)->name('chat.send');
 
     Route::post('/api/chat/sessions', [ChatSessionController::class, 'store'])->name('chat.sessions.store');

@@ -2,20 +2,22 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\RegistrationController;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
-})->middleware('auth')->name('home');
+})->middleware(['auth', 'verified'])->name('home');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware('auth')
+    ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
 Route::post('/dashboard/switch-farm', [DashboardController::class, 'switchFarm'])
-    ->middleware('auth')
+    ->middleware(['auth', 'verified'])
     ->name('dashboard.switch-farm');
 
 Route::middleware('guest')->group(function () {
@@ -39,4 +41,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/email/verify', function () {
         return view('auth.verify');
     })->name('verification.notice');
+
+    Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
+        $request->fulfill();
+
+        return redirect()->route('dashboard');
+    })
+        ->middleware('signed')
+        ->name('verification.verify');
+
+    Route::post('/email/verification-notification', [EmailVerificationController::class, 'send'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
 });

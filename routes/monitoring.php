@@ -7,7 +7,7 @@ use App\Http\Controllers\PhDownLogController;
 use App\Http\Controllers\TankController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     // Tank
     Route::get('/tank', [TankController::class, 'index'])->name('tank.index');
     Route::get('/tank/create', [TankController::class, 'create'])->name('tank.create');
