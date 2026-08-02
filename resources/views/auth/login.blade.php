@@ -31,16 +31,16 @@
             @csrf
 
             <div>
-                <label for="username" class="block text-sm font-semibold text-white/80">Username</label>
+                <label for="email" class="block text-sm font-semibold text-white/80">Email</label>
                 <div class="relative mt-2">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-white/40">
-                        <i class="bi bi-person-fill"></i>
+                        <i class="bi bi-envelope-fill"></i>
                     </span>
-                    <input type="text" name="username" id="username" value="{{ old('username') }}" required autofocus autocomplete="username"
+                    <input type="email" name="email" id="email" value="{{ old('email') }}" required autofocus autocomplete="email"
                         class="block w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 pl-11 text-sm text-white placeholder-slate-400 transition focus:border-[#ffce54]/50 focus:outline-none focus:ring-2 focus:ring-[#ffce54]/20"
-                        placeholder="Masukkan username">
+                        placeholder="Masukkan email">
                 </div>
-                @error('username')
+                @error('email')
                     <p class="mt-2 text-xs text-rose-300">{{ $message }}</p>
                 @enderror
             </div>
