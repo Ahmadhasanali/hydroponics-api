@@ -128,4 +128,23 @@ class UserTest extends TestCase
         $response->assertRedirect(route('user.index'));
         $this->assertSoftDeleted($user);
     }
+
+    public function test_admin_store_creates_verified_user(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->post(route('user.store'), [
+            'name' => 'Petani Baru',
+            'email' => 'petani@example.com',
+        ]);
+
+        $response->assertRedirect(route('user.index'));
+        $this->assertNotNull(User::where('email', 'petani@example.com')->first()->email_verified_at);
+    }
+
+    public function test_factory_has_verified_and_unverified_states(): void
+    {
+        $this->assertNotNull(User::factory()->create()->email_verified_at);
+        $this->assertNull(User::factory()->unverified()->create()->email_verified_at);
+    }
 }
