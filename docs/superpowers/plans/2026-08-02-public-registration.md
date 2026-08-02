@@ -214,7 +214,7 @@ namespace Tests\Unit\Rules;
 use App\Rules\NoTempEmail;
 use Illuminate\Support\Facades\Validator;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class NoTempEmailTest extends TestCase
 {
