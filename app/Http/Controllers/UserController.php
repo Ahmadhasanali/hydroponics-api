@@ -36,6 +36,7 @@ class UserController extends Controller
         $randomChar = Str::random(6);
         $fields = [
             'name' => $request->string('name')->toString(),
+            'email' => $request->string('email')->toString(),
             'password' => Hash::make($randomChar),
         ];
         $user = User::query()->create($fields);

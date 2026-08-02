@@ -4,6 +4,7 @@ namespace Tests\Feature\User;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class UserTest extends TestCase
@@ -27,17 +28,45 @@ class UserTest extends TestCase
 
         $response = $this->post(route('user.store'), [
             'name' => 'aliusername',
+            'email' => 'ali@mail.local',
         ]);
 
         $this->assertDatabaseHas('users', [
             'name' => 'aliusername',
+            'email' => 'ali@mail.local',
         ]);
 
         $response->assertRedirect(route('user.index'));
         $response->assertSessionHas('password');
-        $password = session('password');
+        $this->assertNotNull(session('password'));
+    }
 
-        $this->assertNotNull($password);
+    public function test_admin_store_user_requires_email(): void
+    {
+        $user = User::factory()->admin()->create();
+
+        $this->actingAs($user);
+
+        $response = $this->post(route('user.store'), [
+            'name' => 'aliusername',
+        ]);
+
+        $response->assertInvalid(['email']);
+    }
+
+    public function test_admin_store_user_rejects_duplicate_email(): void
+    {
+        User::factory()->create(['email' => 'existing@mail.local']);
+        $user = User::factory()->admin()->create();
+
+        $this->actingAs($user);
+
+        $response = $this->post(route('user.store'), [
+            'name' => 'aliusername',
+            'email' => 'existing@mail.local',
+        ]);
+
+        $response->assertInvalid(['email']);
     }
 
     public function test_user_can_not_store_another_user(): void
