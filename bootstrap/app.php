@@ -26,5 +26,6 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('chat:purge-deleted-sessions')->hourly();
         $schedule->command('notify:daily-monitoring')->dailyAt(config('app.daily_reminder_hour', '08:00'));
+        $schedule->command('app:sync-disposable-email-domains')->cron('0 0 1 */6 *');
     })
     ->create();
