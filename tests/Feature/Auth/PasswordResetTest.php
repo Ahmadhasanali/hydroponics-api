@@ -3,7 +3,7 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\ResetPasswordNotification;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +32,24 @@ class PasswordResetTest extends TestCase
         $response = $this->post(route('password.email'), ['email' => 'ali@mail.local']);
 
         $response->assertSessionHas('status');
-        Notification::assertSentTo($user, fn (ResetPassword $notification) => true);
+        Notification::assertSentTo($user, ResetPasswordNotification::class, function ($notification) use ($user) {
+            return Password::broker()->tokenExists($user, $notification->token);
+        });
+    }
+
+    public function test_reset_email_contains_valid_reset_url(): void
+    {
+        $user = User::factory()->create(['email' => 'ali@mail.local']);
+        $token = Password::broker()->createToken($user);
+
+        $notification = new ResetPasswordNotification($token);
+        $mail = $notification->toMail($user);
+        $html = $mail->render();
+
+        $this->assertStringContainsString(
+            route('password.reset', ['token' => $token, 'email' => 'ali@mail.local']),
+            $html
+        );
     }
 
     public function test_password_reset_link_shows_same_status_for_unknown_email(): void
