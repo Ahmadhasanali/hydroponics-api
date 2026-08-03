@@ -27,7 +27,7 @@ class NoFarmMonitoringTest extends TestCase
             $response = $this->actingAs($user)->get(route($route));
 
             $response->assertOk();
-            $response->assertSee('Buat Farm Baru');
+            $response->assertViewIs('farm.no-farm');
         }
     }
 
