@@ -1,0 +1,137 @@
+<?php
+
+namespace Tests\Feature\Commands;
+
+use App\Models\Farm;
+use App\Models\Reminder;
+use App\Models\Reminder\ReminderOccurrence;
+use App\Models\Reminder\ReminderTarget;
+use App\Models\User;
+use App\Services\PushNotificationService;
+use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Routing\UrlGenerator;
+use Mockery;
+use Tests\TestCase;
+
+class DispatchRemindersTest extends TestCase
+{
+    use LazilyRefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Route farm.reminders.show baru didaftarkan di Task 8. Saat test ini
+        // berjalan, generate URL detail reminder lewat named route resolver agar
+        // service tetap menerima string URL (lihat juga komentar di service).
+        $this->app->make(UrlGenerator::class)->resolveMissingNamedRoutesUsing(
+            fn (string $name, array $parameters): ?string => $name === 'farm.reminders.show'
+                ? 'http://localhost/farm/reminders/'.$parameters[1]
+                : null,
+        );
+    }
+
+    private function makeDueReminder(): array
+    {
+        $owner = User::factory()->create();
+        $farm = Farm::factory()->create(['created_by' => $owner->id]);
+        $farm->users()->attach($owner->id, ['role' => 'owner']);
+        $target = User::factory()->create();
+        $farm->users()->attach($target->id, ['role' => 'manager']);
+
+        $reminder = Reminder::factory()->create([
+            'farm_id' => $farm->id,
+            'created_by_type' => User::class,
+            'created_by_id' => $owner->id,
+            'starts_at' => now()->subMinute(),
+            'recurrence' => ['type' => 'interval', 'every_days' => 1],
+        ]);
+
+        ReminderTarget::factory()->create([
+            'reminder_id' => $reminder->id,
+            'targetable_type' => User::class,
+            'targetable_id' => $target->id,
+        ]);
+
+        $occurrence = ReminderOccurrence::factory()->create([
+            'reminder_id' => $reminder->id,
+            'scheduled_at' => now()->subMinute(),
+        ]);
+
+        return compact('reminder', 'target', 'occurrence');
+    }
+
+    public function test_dispatch_sends_push_and_generates_next_occurrence(): void
+    {
+        ['reminder' => $reminder, 'target' => $target, 'occurrence' => $occurrence] = $this->makeDueReminder();
+
+        $push = Mockery::mock(PushNotificationService::class);
+        $push->shouldReceive('sendToUser')->once()->with(
+            Mockery::on(fn (User $user) => $user->is($target)),
+            $reminder->title,
+            $reminder->body,
+            Mockery::type('string'),
+        );
+        $this->app->instance(PushNotificationService::class, $push);
+
+        $this->artisan('reminders:dispatch')->assertExitCode(0);
+
+        $this->assertNotNull($occurrence->fresh()->notified_at);
+        $this->assertDatabaseHas('reminder_occurrences', [
+            'reminder_id' => $reminder->id,
+            'status' => 'pending',
+        ]);
+        $this->assertSame(2, $reminder->occurrences()->count());
+    }
+
+    public function test_dispatch_sends_advance_notification(): void
+    {
+        $owner = User::factory()->create();
+        $farm = Farm::factory()->create(['created_by' => $owner->id]);
+        $farm->users()->attach($owner->id, ['role' => 'owner']);
+        $target = User::factory()->create();
+        $farm->users()->attach($target->id, ['role' => 'manager']);
+
+        $reminder = Reminder::factory()->create([
+            'farm_id' => $farm->id,
+            'created_by_type' => User::class,
+            'created_by_id' => $owner->id,
+            'advance_notify_minutes' => 30,
+        ]);
+
+        ReminderTarget::factory()->create([
+            'reminder_id' => $reminder->id,
+            'targetable_type' => User::class,
+            'targetable_id' => $target->id,
+        ]);
+
+        $occurrence = ReminderOccurrence::factory()->create([
+            'reminder_id' => $reminder->id,
+            'scheduled_at' => now()->addMinutes(29),
+            'advance_notify_at' => now()->subMinute(),
+        ]);
+
+        $push = Mockery::mock(PushNotificationService::class);
+        $push->shouldReceive('sendToUser')->once();
+        $this->app->instance(PushNotificationService::class, $push);
+
+        $this->artisan('reminders:dispatch')->assertExitCode(0);
+
+        $this->assertNotNull($occurrence->fresh()->advance_notified_at);
+        $this->assertNull($occurrence->fresh()->notified_at);
+    }
+
+    public function test_dispatch_does_not_resend_notified_occurrence(): void
+    {
+        ['occurrence' => $occurrence] = $this->makeDueReminder();
+        $occurrence->update(['notified_at' => now()]);
+
+        $push = Mockery::mock(PushNotificationService::class);
+        $push->shouldNotReceive('sendToUser');
+        $this->app->instance(PushNotificationService::class, $push);
+
+        $this->artisan('reminders:dispatch')->assertExitCode(0);
+
+        $this->assertNotNull($occurrence->fresh()->notified_at);
+    }
+}
