@@ -32,8 +32,8 @@ class RoleMigrationTest extends TestCase
             ['farm_id' => $farm->id, 'user_id' => $member->id, 'role' => 'member', 'created_at' => now(), 'updated_at' => now()],
         ]);
 
-        // Panggil ulang migrasi role secara manual agar bisa diuji deterministik.
-        DB::table('farm_users')->where('role', 'member')->update(['role' => 'manager']);
+        // Jalankan migrasi role yang sesungguhnya agar transformasi data terverifikasi.
+        (require base_path('database/migrations/2026_08_03_000003_migrate_farm_member_role_to_manager.php'))->up();
 
         $this->assertSame('manager', FarmUser::where('user_id', $member->id)->first()->role);
         $this->assertSame('owner', FarmUser::where('user_id', $owner->id)->first()->role);
