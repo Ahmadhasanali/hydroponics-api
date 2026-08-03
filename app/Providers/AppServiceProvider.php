@@ -7,12 +7,15 @@ use App\Models\Farm\DailyMonitoring;
 use App\Models\Farm\NutrientAddition;
 use App\Models\Farm\PhDownLog;
 use App\Models\Farm\Tank;
+use App\Models\Reminder;
 use App\Observers\ActivityLogObserver;
 use App\Observers\DailyMonitoringObserver;
 use App\Observers\NutrientAdditionObserver;
 use App\Observers\PhDownLogObserver;
+use App\Policies\ReminderPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
@@ -45,6 +48,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::policy(Reminder::class, ReminderPolicy::class);
+
         Farm::observe(ActivityLogObserver::class);
         Tank::observe(ActivityLogObserver::class);
         DailyMonitoring::observe(ActivityLogObserver::class);
