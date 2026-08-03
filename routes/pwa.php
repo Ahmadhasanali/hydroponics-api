@@ -10,3 +10,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/push-subscriptions', [PushSubscriptionController::class, 'destroy'])
         ->name('push-subscriptions.destroy');
 });
+
+Route::middleware('auth:staff')->group(function () {
+    Route::post('/staff/push-subscriptions', [PushSubscriptionController::class, 'store'])
+        ->name('staff.push-subscriptions.store');
+
+    Route::delete('/staff/push-subscriptions', [PushSubscriptionController::class, 'destroy'])
+        ->name('staff.push-subscriptions.destroy');
+});

@@ -16,9 +16,11 @@ class PushSubscriptionController extends Controller
             'device_info' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $subscribable = $request->user();
+
         $subscription = PushSubscription::where('fcm_token', $validated['fcm_token'])->first();
 
-        if ($subscription && $subscription->user_id !== $request->user()->id) {
+        if ($subscription && $subscription->subscribable_id !== $subscribable->id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Token sudah terdaftar untuk pengguna lain.',
@@ -28,7 +30,8 @@ class PushSubscriptionController extends Controller
         PushSubscription::updateOrCreate(
             ['fcm_token' => $validated['fcm_token']],
             [
-                'user_id' => $request->user()->id,
+                'subscribable_type' => $subscribable::class,
+                'subscribable_id' => $subscribable->id,
                 'platform' => $validated['platform'] ?? 'android',
                 'device_info' => $validated['device_info'] ?? null,
             ],
@@ -43,7 +46,8 @@ class PushSubscriptionController extends Controller
             'fcm_token' => ['required', 'string', 'max:255'],
         ]);
 
-        PushSubscription::where('user_id', $request->user()->id)
+        PushSubscription::where('subscribable_type', $request->user()::class)
+            ->where('subscribable_id', $request->user()->id)
             ->where('fcm_token', $validated['fcm_token'])
             ->delete();
 

@@ -25,7 +25,7 @@ class NotifyDailyMonitoringTest extends TestCase
         $this->app->instance(PushNotificationService::class, $push);
 
         $withDevice = User::factory()->create();
-        PushSubscription::factory()->create(['user_id' => $withDevice->id]);
+        PushSubscription::factory()->forSubscribable($withDevice)->create();
         User::factory()->create();
 
         $this->artisan('notify:daily-monitoring')->assertExitCode(0);
@@ -38,7 +38,7 @@ class NotifyDailyMonitoringTest extends TestCase
         $this->app->instance(PushNotificationService::class, $push);
 
         $user = User::factory()->create();
-        PushSubscription::factory()->create(['user_id' => $user->id]);
+        PushSubscription::factory()->forSubscribable($user)->create();
 
         $this->artisan('notify:daily-monitoring')->assertExitCode(0);
         $this->artisan('notify:daily-monitoring')->assertExitCode(0);

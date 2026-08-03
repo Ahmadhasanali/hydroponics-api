@@ -35,7 +35,7 @@ class PushNotificationServiceTest extends TestCase
 
         $service = new PushNotificationService($messaging);
         $user = User::factory()->create();
-        PushSubscription::factory()->count(2)->create(['user_id' => $user->id]);
+        PushSubscription::factory()->count(2)->forSubscribable($user)->create();
 
         $service->sendToUser($user, 'Judul', 'Isi', '/dashboard');
     }
@@ -47,7 +47,7 @@ class PushNotificationServiceTest extends TestCase
 
         $service = new PushNotificationService($messaging);
         $user = User::factory()->create();
-        $subscription = PushSubscription::factory()->create(['user_id' => $user->id]);
+        $subscription = PushSubscription::factory()->forSubscribable($user)->create();
 
         $service->sendToUser($user, 'Judul', 'Isi');
 
@@ -61,7 +61,7 @@ class PushNotificationServiceTest extends TestCase
 
         $service = new PushNotificationService($messaging);
         $user = User::factory()->create();
-        $subscription = PushSubscription::factory()->create(['user_id' => $user->id]);
+        $subscription = PushSubscription::factory()->forSubscribable($user)->create();
 
         $service->sendToUser($user, 'Judul', 'Isi');
 

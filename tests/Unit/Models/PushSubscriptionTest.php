@@ -18,12 +18,12 @@ class PushSubscriptionTest extends TestCase
         $this->assertDatabaseHas('push_subscriptions', ['id' => $subscription->id]);
     }
 
-    public function test_subscription_belongs_to_user(): void
+    public function test_subscription_morphs_to_subscribable(): void
     {
         $user = User::factory()->create();
-        $subscription = PushSubscription::factory()->create(['user_id' => $user->id]);
+        $subscription = PushSubscription::factory()->forSubscribable($user)->create();
 
-        $this->assertTrue($subscription->user->is($user));
+        $this->assertTrue($subscription->subscribable->is($user));
         $this->assertTrue($user->pushSubscriptions()->first()->is($subscription));
     }
 }

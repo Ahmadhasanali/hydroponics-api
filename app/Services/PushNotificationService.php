@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Farm\Staff;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Kreait\Firebase\Contract\Messaging;
@@ -14,7 +15,7 @@ class PushNotificationService
 {
     public function __construct(private ?Messaging $messaging) {}
 
-    public function sendToUser(User $user, string $title, string $body, ?string $url = null): void
+    public function sendToUser(User|Staff $user, string $title, string $body, ?string $url = null): void
     {
         $subscriptions = $user->pushSubscriptions()->get();
 
