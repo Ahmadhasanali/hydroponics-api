@@ -68,6 +68,18 @@ class ReminderRecurrenceServiceTest extends TestCase
         $this->assertSame('2026-08-15 08:00:00', $next?->format('Y-m-d H:i:s'));
     }
 
+    public function test_monthly_recurrence_with_day_31_skips_short_month(): void
+    {
+        $reminder = $this->makeReminder(['type' => 'monthly', 'days_of_month' => [31]]);
+        $service = new ReminderRecurrenceService;
+
+        // 31 Jan 2026 08:00 → Februari tidak punya tanggal 31, jadi lompat ke 31 Mar 2026 08:00
+        // (bukan meluap ke 03 Mar seperti addMonth() yang lama).
+        $next = $service->nextOccurrenceAfter($reminder, Carbon::parse('2026-01-31 08:00:00'));
+
+        $this->assertSame('2026-03-31 08:00:00', $next?->format('Y-m-d H:i:s'));
+    }
+
     public function test_generate_occurrences_in_range(): void
     {
         $reminder = $this->makeReminder(['type' => 'weekly', 'days_of_week' => ['mon']]);

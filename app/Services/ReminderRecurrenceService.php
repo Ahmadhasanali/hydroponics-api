@@ -154,6 +154,22 @@ class ReminderRecurrenceService
             }
         }
 
-        return $current->copy()->addMonth();
+        // Tidak ada hari target yang valid di bulan berikutnya (mis. monthly [31] dari 31 Jan:
+        // Februari tidak punya tanggal 31). Cari maju bulan demi bulan dengan batas aman agar
+        // tidak pernah memancarkan tanggal di luar pola (addMonth() meluap ke bulan lain).
+        for ($i = 0; $i < 12; $i++) {
+            $searchMonth = $nextMonth->copy()->addMonths($i + 1);
+
+            foreach ($days as $targetDay) {
+                $candidate = $searchMonth->copy()->setDay($targetDay);
+
+                if ($candidate->format('m') === $searchMonth->format('m')) {
+                    return $candidate->setTimeFrom($current);
+                }
+            }
+        }
+
+        // Jaring pengaman defensif: tetap di hari yang sama di tahun berikutnya (masih dalam pola).
+        return $current->copy()->addYear();
     }
 }
