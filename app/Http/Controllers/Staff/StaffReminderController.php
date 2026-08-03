@@ -143,8 +143,7 @@ class StaffReminderController extends Controller
 
         foreach ($reminders as $reminder) {
             $generated = $generated->concat(
-                $this->recurrence
-                    ->generateOccurrences($reminder, $start, $end)
+                collect($this->recurrence->generateOccurrences($reminder, $start, $end))
                     ->map(fn (Carbon $c) => (object) [
                         'scheduled_at' => $c,
                         'reminder' => $reminder,

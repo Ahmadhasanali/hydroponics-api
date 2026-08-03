@@ -3290,7 +3290,7 @@ git commit -m "feat: reminder untuk staff (guard staff)"
 - Consumes: semua service & controller dari Task 1-9.
 - Produces: kalender yang menampilkan occurrence bulan berjalan, hanya reminder visible.
 
-- [ ] **Step 1: Tulis test kalender yang gagal**
+- [x] **Step 1: Tulis test kalender yang gagal**
 
 `tests/Feature/Reminder/ReminderCalendarTest.php`:
 
@@ -3363,27 +3363,27 @@ class ReminderCalendarTest extends TestCase
 }
 ```
 
-- [ ] **Step 2: Jalankan test kalender**
+- [x] **Step 2: Jalankan test kalender**
 
 Run: `vendor/bin/sail artisan test --compact tests/Feature/Reminder/ReminderCalendarTest.php`
 Expected: FAIL jika implementasi kalender Task 8 belum benar; PASS setelah diperbaiki.
 
-- [ ] **Step 3: Perbaiki implementasi kalender jika perlu**
+- [x] **Step 3: Perbaiki implementasi kalender jika perlu**
 
 Pastikan `ReminderController::calendar` menampilkan: semua `stored` occurrence dalam rentang bulan + hasil `generateOccurrences` untuk reminder recurring (yang belum punya occurrence tersimpan), dan hanya untuk reminder di `visibleReminderIds`. Jika test gagal karena `assertDontSee`, cek apakah judul reminder bocor lewat data attribute atau element lain — pastikan hanya reminder visible yang dirender.
 
-- [ ] **Step 4: Jalankan seluruh test suite reminder**
+- [x] **Step 4: Jalankan seluruh test suite reminder**
 
 Run: `vendor/bin/sail artisan test --compact tests/Feature/Reminder tests/Unit/Services tests/Feature/Commands/DispatchRemindersTest.php tests/Feature/Staff/StaffReminderTest.php tests/Feature/PushSubscription`
 Expected: PASS semua.
 
-- [ ] **Step 5: Pint seluruh file + jalankan full test suite**
+- [x] **Step 5: Pint seluruh file + jalankan full test suite**
 
 Run: `vendor/bin/sail bin pint --dirty --format agent`
 Run: `vendor/bin/sail artisan test --compact`
 Expected: PASS (termasuk test existing yang tidak rusak).
 
-- [ ] **Step 6: Commit final**
+- [x] **Step 6: Commit final**
 
 ```bash
 git add app routes resources tests docs
