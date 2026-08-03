@@ -70,5 +70,11 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(10)->by($request->ip()),
             ];
         });
+        RateLimiter::for('staff-login', function (Request $request) {
+            return [
+                Limit::perMinute(5)->by($request->input('username').'|'.$request->ip()),
+                Limit::perMinute(10)->by($request->ip()),
+            ];
+        });
     }
 }
