@@ -342,7 +342,7 @@ class NoFarmMenuVisibilityTest extends TestCase
         $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertDontSee('href="' . route('tank.index') . '"');
+        $response->assertDontSee('href="' . route('tank.index') . '"', false);
         $response->assertSee('Buat Farm Baru');
     }
 
@@ -355,7 +355,7 @@ class NoFarmMenuVisibilityTest extends TestCase
         $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee('href="' . route('tank.index') . '"');
+        $response->assertSee('href="' . route('tank.index') . '"', false);
         $response->assertDontSee('Buat Farm Baru');
     }
 }
