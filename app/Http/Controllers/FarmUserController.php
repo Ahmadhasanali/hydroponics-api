@@ -15,9 +15,12 @@ class FarmUserController extends Controller
 {
     public function index(Request $request, Farm $farm): View
     {
-        $farm->load(['users' => function ($query) {
-            $query->orderBy('pivot_created_at');
-        }]);
+        $farm->load([
+            'users' => function ($query) {
+                $query->orderBy('pivot_created_at');
+            },
+            'staff',
+        ]);
 
         return view('farm-members.index', compact('farm'));
     }
