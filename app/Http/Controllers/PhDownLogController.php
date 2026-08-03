@@ -12,7 +12,11 @@ class PhDownLogController extends Controller
 {
     public function index(Request $request): View
     {
-        $farmId = $request->session()->get('selected_farm_id');
+        if (! $this->hasFarm($request)) {
+            return view('farm.no-farm');
+        }
+
+        $farmId = $this->selectedFarm($request)->id;
         $tanks = Tank::where('farm_id', $farmId)->pluck('id');
         $logs = PhDownLog::whereIn('tank_id', $tanks)
             ->with(['tank', 'user'])
@@ -24,7 +28,11 @@ class PhDownLogController extends Controller
 
     public function create(Request $request): View
     {
-        $farmId = $request->session()->get('selected_farm_id');
+        if (! $this->hasFarm($request)) {
+            return view('farm.no-farm');
+        }
+
+        $farmId = $this->selectedFarm($request)->id;
         $tanks = Tank::where('farm_id', $farmId)
             ->where('is_active', true)
             ->orderBy('name')
@@ -35,6 +43,10 @@ class PhDownLogController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        if (! $this->hasFarm($request)) {
+            return redirect()->route('farm.create');
+        }
+
         $validated = $request->validate([
             'tank_id' => 'required|exists:tanks,id',
             'log_date' => 'required|date',
