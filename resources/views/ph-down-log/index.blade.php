@@ -55,7 +55,7 @@
                                         <td class="px-5 py-3 text-slate-600">{{ $log->ph_before }}</td>
                                         <td class="px-5 py-3 text-slate-600">{{ $log->ph_after }}</td>
                                         <td class="px-5 py-3 text-slate-600">{{ $log->ph_down_ml }}</td>
-                                        <td class="px-5 py-3 text-slate-500">{{ $log->user->name ?? '—' }}</td>
+                                        <td class="px-5 py-3 text-slate-500">{{ $log->actorName() ?? '—' }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>

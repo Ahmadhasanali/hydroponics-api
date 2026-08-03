@@ -14,6 +14,7 @@ class DailyMonitoring extends Model
 
     protected $fillable = [
         'user_id',
+        'staff_id',
         'tank_id',
         'log_date',
         'ppm',
@@ -49,6 +50,16 @@ class DailyMonitoring extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function staff(): BelongsTo
+    {
+        return $this->belongsTo(Staff::class);
+    }
+
+    public function actorName(): ?string
+    {
+        return $this->user?->name ?? $this->staff?->name ?? null;
     }
 
     public function tank(): BelongsTo

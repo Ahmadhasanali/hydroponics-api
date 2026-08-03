@@ -57,7 +57,7 @@
                                         <td class="px-5 py-3 text-slate-600">{{ $a->ppm_after }}</td>
                                         <td class="px-5 py-3 text-slate-600">{{ $a->nutrient_a_ml }}</td>
                                         <td class="px-5 py-3 text-slate-600">{{ $a->nutrient_b_ml }}</td>
-                                        <td class="px-5 py-3 text-slate-500">{{ $a->user->name ?? '—' }}</td>
+                                        <td class="px-5 py-3 text-slate-500">{{ $a->actorName() ?? '—' }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>

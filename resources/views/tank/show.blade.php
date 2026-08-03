@@ -149,7 +149,7 @@
                                             <td class="py-2.5 pr-4">{{ number_format($m->ppm, 0) }}</td>
                                             <td class="py-2.5 pr-4">{{ number_format($m->ph, 1) }}</td>
                                             <td class="py-2.5 pr-4">{{ $m->water_temperature ? number_format($m->water_temperature, 1).' °C' : '-' }}</td>
-                                            <td class="py-2.5 pr-4">{{ $m->user->name ?? '-' }}</td>
+                                            <td class="py-2.5 pr-4">{{ $m->actorName() ?? '-' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -189,7 +189,7 @@
                                             <td class="py-2.5 pr-4">{{ number_format($n->ppm_after, 0) }}</td>
                                             <td class="py-2.5 pr-4">{{ number_format($n->nutrient_a_ml, 0) }}</td>
                                             <td class="py-2.5 pr-4">{{ number_format($n->nutrient_b_ml, 0) }}</td>
-                                            <td class="py-2.5 pr-4">{{ $n->user->name ?? '-' }}</td>
+                                            <td class="py-2.5 pr-4">{{ $n->actorName() ?? '-' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -227,7 +227,7 @@
                                             <td class="py-2.5 pr-4">{{ number_format($p->ph_before, 1) }}</td>
                                             <td class="py-2.5 pr-4">{{ number_format($p->ph_after, 1) }}</td>
                                             <td class="py-2.5 pr-4">{{ number_format($p->ph_down_ml, 0) }}</td>
-                                            <td class="py-2.5 pr-4">{{ $p->user->name ?? '-' }}</td>
+                                            <td class="py-2.5 pr-4">{{ $p->actorName() ?? '-' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>

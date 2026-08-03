@@ -56,7 +56,7 @@
                                         <td class="px-5 py-3 text-slate-600">{{ $m->ppm }}</td>
                                         <td class="px-5 py-3 text-slate-600">{{ $m->ph }}</td>
                                         <td class="px-5 py-3 text-slate-600">{{ $m->water_temperature }}°C</td>
-                                        <td class="px-5 py-3 text-slate-500">{{ $m->user->name ?? '—' }}</td>
+                                        <td class="px-5 py-3 text-slate-500">{{ $m->actorName() ?? '—' }}</td>
                                         <td class="px-5 py-3">
                                             <div class="flex items-center gap-2">
                                                 <a href="{{ route('daily-monitoring.edit', $m) }}"
