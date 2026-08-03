@@ -56,6 +56,9 @@
                                             @endif
                                         @endforeach
                                     </select>
+                                    @error('new_owner_id')
+                                        <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
                                 <button type="submit"
                                     class="inline-flex items-center gap-2 rounded-2xl bg-[#ffce54] px-6 py-3 text-sm font-bold text-[#1a1c1e] shadow-sm transition hover:bg-[#f0b830]">
