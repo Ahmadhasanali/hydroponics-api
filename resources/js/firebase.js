@@ -12,6 +12,10 @@ const firebaseConfig = () => {
 
 const csrfToken = () => document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
+const isStaffPage = () => window.location.pathname.startsWith('/staff');
+
+const pushEndpoint = () => (isStaffPage() ? '/staff/push-subscriptions' : '/push-subscriptions');
+
 const registerDeviceToken = async (messaging, getToken, serviceWorkerRegistration) => {
     try {
         const permission = await Notification.requestPermission();
@@ -30,7 +34,7 @@ const registerDeviceToken = async (messaging, getToken, serviceWorkerRegistratio
 
         localStorage.setItem('fcm_token', token);
 
-        const response = await fetch('/push-subscriptions', {
+        const response = await fetch(pushEndpoint(), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -63,7 +67,7 @@ const cleanupTokenOnLogout = () => {
         const token = localStorage.getItem('fcm_token');
         try {
             if (token) {
-                await fetch('/push-subscriptions', {
+                await fetch(pushEndpoint(), {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -117,7 +121,7 @@ const initFirebaseMessaging = async () => {
 
                 localStorage.setItem('fcm_token', token);
 
-                const response = await fetch('/push-subscriptions', {
+                const response = await fetch(pushEndpoint(), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

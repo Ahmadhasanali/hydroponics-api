@@ -44,6 +44,7 @@
                     ['label' => 'pH Down', 'route' => 'staff.ph-down.create', 'active' => ['staff.ph-down.create', 'staff.ph-down.edit', 'staff.ph-down.update', 'staff.ph-down.store']],
                     ['label' => 'Catatan Saya', 'route' => 'staff.monitoring.index', 'active' => ['staff.monitoring.index']],
                     ['label' => 'Laporan', 'route' => 'staff.reports.monitoring', 'active' => ['staff.reports.monitoring', 'staff.reports.nutrient', 'staff.reports.ph-down']],
+                    ['label' => 'Reminder', 'route' => 'staff.reminders.index', 'active' => ['staff.reminders.index', 'staff.reminders.create', 'staff.reminders.calendar']],
                 ];
             @endphp
             @foreach($navs as $nav)

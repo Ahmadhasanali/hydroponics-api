@@ -5,6 +5,7 @@ use App\Http\Controllers\Staff\StaffDashboardController;
 use App\Http\Controllers\Staff\StaffMonitoringController;
 use App\Http\Controllers\Staff\StaffNutrientAdditionController;
 use App\Http\Controllers\Staff\StaffPhDownController;
+use App\Http\Controllers\Staff\StaffReminderController;
 use App\Http\Controllers\Staff\StaffReportController;
 use Illuminate\Support\Facades\Route;
 
@@ -43,4 +44,12 @@ Route::middleware('auth:staff')->group(function () {
     Route::get('/staff/reports/monitoring', [StaffReportController::class, 'monitoring'])->name('staff.reports.monitoring');
     Route::get('/staff/reports/nutrient', [StaffReportController::class, 'nutrient'])->name('staff.reports.nutrient');
     Route::get('/staff/reports/ph-down', [StaffReportController::class, 'phDown'])->name('staff.reports.ph-down');
+
+    Route::get('/staff/reminders', [StaffReminderController::class, 'index'])->name('staff.reminders.index');
+    Route::get('/staff/reminders/create', [StaffReminderController::class, 'create'])->name('staff.reminders.create');
+    Route::post('/staff/reminders', [StaffReminderController::class, 'store'])->name('staff.reminders.store');
+    Route::get('/staff/reminders/calendar', [StaffReminderController::class, 'calendar'])->name('staff.reminders.calendar');
+    Route::post('/staff/reminders/occurrences/{occurrence}/done', [StaffReminderController::class, 'occurrenceDone'])->name('staff.reminders.occurrence-done');
+    Route::post('/staff/reminders/occurrences/{occurrence}/skip', [StaffReminderController::class, 'occurrenceSkip'])->name('staff.reminders.occurrence-skip');
+    Route::delete('/staff/reminders/{reminder}', [StaffReminderController::class, 'destroy'])->name('staff.reminders.destroy');
 });
