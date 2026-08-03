@@ -15,6 +15,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Kreait\Firebase\Contract\Messaging;
 use Kreait\Firebase\Factory;
@@ -52,6 +53,10 @@ class AppServiceProvider extends ServiceProvider
         DailyMonitoring::observe(DailyMonitoringObserver::class);
         NutrientAddition::observe(NutrientAdditionObserver::class);
         PhDownLog::observe(PhDownLogObserver::class);
+
+        View::composer(['partials.sidebar', 'partials.bottom-nav'], function ($view) {
+            $view->with('hasFarm', auth()->check() && auth()->user()->farms()->exists());
+        });
 
         $this->loadMigrationsFrom(
             [
