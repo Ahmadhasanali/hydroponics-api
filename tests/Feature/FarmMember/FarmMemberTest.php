@@ -48,7 +48,7 @@ class FarmMemberTest extends TestCase
         $this->assertDatabaseHas('farm_users', [
             'farm_id' => $farm->id,
             'user_id' => $invitee->id,
-            'role' => 'member',
+            'role' => 'manager',
         ]);
     }
 

@@ -31,6 +31,7 @@
                                 @error('email')
                                     <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p>
                                 @enderror
+                                <p class="mt-2 text-xs text-slate-500">User yang diundang akan bergabung sebagai <strong>Manager</strong>.</p>
                             </div>
 
                             <div class="flex items-center gap-3">

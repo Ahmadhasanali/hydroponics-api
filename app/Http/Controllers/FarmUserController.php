@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class FarmUserController extends Controller
 {
@@ -44,7 +45,7 @@ class FarmUserController extends Controller
                 ->withInput();
         }
 
-        $farm->users()->attach($user->id, ['role' => 'member']);
+        $farm->users()->attach($user->id, ['role' => 'manager']);
 
         return redirect()->route('farm.members.index', $farm)
             ->with('success', 'Anggota berhasil ditambahkan.');
@@ -52,7 +53,11 @@ class FarmUserController extends Controller
 
     public function destroy(Request $request, Farm $farm, FarmUser $farmUser): RedirectResponse
     {
-        $this->authorize('update', $farm);
+        Gate::authorize('manageMembers', $farm);
+
+        if ($farmUser->role === 'owner') {
+            return back()->withErrors(['error' => 'Pemilik kebun tidak dapat dihapus.']);
+        }
 
         if ($farmUser->user_id === $request->user()->id) {
             return back()->withErrors(['error' => 'Anda tidak dapat menghapus diri sendiri.']);

@@ -18,7 +18,7 @@ class StoreFarmUserRequest extends FormRequest
 
         return $farm->users()
             ->where('user_id', $this->user()->id)
-            ->wherePivot('role', 'owner')
+            ->wherePivotIn('role', ['owner', 'manager'])
             ->exists();
     }
 
