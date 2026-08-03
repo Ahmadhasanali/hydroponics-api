@@ -20,7 +20,9 @@ class PushSubscriptionController extends Controller
 
         $subscription = PushSubscription::where('fcm_token', $validated['fcm_token'])->first();
 
-        if ($subscription && $subscription->subscribable_id !== $subscribable->id) {
+        if ($subscription
+            && ($subscription->subscribable_type !== $subscribable::class
+                || $subscription->subscribable_id !== $subscribable->id)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Token sudah terdaftar untuk pengguna lain.',
@@ -46,8 +48,10 @@ class PushSubscriptionController extends Controller
             'fcm_token' => ['required', 'string', 'max:255'],
         ]);
 
-        PushSubscription::where('subscribable_type', $request->user()::class)
-            ->where('subscribable_id', $request->user()->id)
+        $subscribable = $request->user();
+
+        PushSubscription::where('subscribable_type', $subscribable::class)
+            ->where('subscribable_id', $subscribable->id)
             ->where('fcm_token', $validated['fcm_token'])
             ->delete();
 
