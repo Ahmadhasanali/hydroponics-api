@@ -13,7 +13,11 @@ class ReportController extends Controller
 {
     public function monitoring(Request $request): View
     {
-        $farmId = $request->session()->get('selected_farm_id');
+        if (! $this->hasFarm($request)) {
+            return view('farm.no-farm');
+        }
+
+        $farmId = $this->selectedFarm($request)->id;
         $tanks = Tank::where('farm_id', $farmId)->orderBy('name')->get();
 
         $tankId = $request->input('tank_id');
@@ -41,7 +45,11 @@ class ReportController extends Controller
 
     public function nutrient(Request $request): View
     {
-        $farmId = $request->session()->get('selected_farm_id');
+        if (! $this->hasFarm($request)) {
+            return view('farm.no-farm');
+        }
+
+        $farmId = $this->selectedFarm($request)->id;
         $tanks = Tank::where('farm_id', $farmId)->orderBy('name')->get();
 
         $tankId = $request->input('tank_id');
@@ -65,7 +73,11 @@ class ReportController extends Controller
 
     public function phDown(Request $request): View
     {
-        $farmId = $request->session()->get('selected_farm_id');
+        if (! $this->hasFarm($request)) {
+            return view('farm.no-farm');
+        }
+
+        $farmId = $this->selectedFarm($request)->id;
         $tanks = Tank::where('farm_id', $farmId)->orderBy('name')->get();
 
         $tankId = $request->input('tank_id');

@@ -10,7 +10,11 @@ class ActivityLogController extends Controller
 {
     public function index(Request $request): View
     {
-        $farmId = $request->session()->get('selected_farm_id');
+        if (! $this->hasFarm($request)) {
+            return view('farm.no-farm');
+        }
+
+        $farmId = $this->selectedFarm($request)->id;
         $logs = ActivityLog::where('farm_id', $farmId)
             ->with('user')
             ->latest('created_at')
