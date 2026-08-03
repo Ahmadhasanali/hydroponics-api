@@ -76,4 +76,33 @@ class FarmAuthorizationTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_owner_cannot_transfer_to_self(): void
+    {
+        ['owner' => $owner, 'farm' => $farm] = $this->setUpFarm();
+
+        $response = $this->actingAs($owner)->post(route('farm.transfer', $farm), [
+            'new_owner_id' => $owner->id,
+        ]);
+
+        $response->assertSessionHasErrors('new_owner_id');
+        $this->assertDatabaseHas('farm_users', [
+            'farm_id' => $farm->id,
+            'user_id' => $owner->id,
+            'role' => 'owner',
+        ]);
+    }
+
+    public function test_non_owner_cannot_transfer(): void
+    {
+        ['farm' => $farm] = $this->setUpFarm();
+        $member = User::factory()->create();
+        $farm->users()->attach($member->id, ['role' => 'member']);
+
+        $response = $this->actingAs($member)->post(route('farm.transfer', $farm), [
+            'new_owner_id' => $member->id,
+        ]);
+
+        $response->assertForbidden();
+    }
 }

@@ -16,9 +16,10 @@ class StaffReportController extends Controller
     {
         $farm = auth('staff')->user()->farm;
         $tanks = Tank::where('farm_id', $farm->id)->orderBy('name')->get();
+        $tankIds = $tanks->pluck('id');
 
         $aggregates = null;
-        if ($request->filled(['tank_id', 'start_date', 'end_date'])) {
+        if ($request->filled(['tank_id', 'start_date', 'end_date']) && $tankIds->contains($request->input('tank_id'))) {
             $query = DailyMonitoring::where('tank_id', $request->input('tank_id'))
                 ->whereBetween('log_date', [$request->input('start_date'), $request->input('end_date')]);
 
@@ -40,9 +41,10 @@ class StaffReportController extends Controller
     {
         $farm = auth('staff')->user()->farm;
         $tanks = Tank::where('farm_id', $farm->id)->orderBy('name')->get();
+        $tankIds = $tanks->pluck('id');
 
         $aggregates = null;
-        if ($request->filled(['tank_id', 'start_date', 'end_date'])) {
+        if ($request->filled(['tank_id', 'start_date', 'end_date']) && $tankIds->contains($request->input('tank_id'))) {
             $query = NutrientAddition::where('tank_id', $request->input('tank_id'))
                 ->whereBetween('log_date', [$request->input('start_date'), $request->input('end_date')]);
 
@@ -60,9 +62,10 @@ class StaffReportController extends Controller
     {
         $farm = auth('staff')->user()->farm;
         $tanks = Tank::where('farm_id', $farm->id)->orderBy('name')->get();
+        $tankIds = $tanks->pluck('id');
 
         $aggregates = null;
-        if ($request->filled(['tank_id', 'start_date', 'end_date'])) {
+        if ($request->filled(['tank_id', 'start_date', 'end_date']) && $tankIds->contains($request->input('tank_id'))) {
             $query = PhDownLog::where('tank_id', $request->input('tank_id'))
                 ->whereBetween('log_date', [$request->input('start_date'), $request->input('end_date')]);
 

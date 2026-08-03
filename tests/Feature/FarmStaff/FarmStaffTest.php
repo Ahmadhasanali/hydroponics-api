@@ -70,6 +70,21 @@ class FarmStaffTest extends TestCase
         $response->assertSessionHasErrors('username');
     }
 
+    public function test_soft_deleted_username_is_reserved(): void
+    {
+        ['owner' => $owner, 'farm' => $farm] = $this->setUpFarm();
+        $staff = Staff::factory()->create(['farm_id' => $farm->id, 'username' => 'anton']);
+        $staff->delete();
+
+        $response = $this->actingAs($owner)->post(route('farm.members.staff-store', $farm), [
+            'name' => 'Anton Baru',
+            'username' => 'anton',
+            'password' => 'secret123',
+        ]);
+
+        $response->assertSessionHasErrors('username');
+    }
+
     public function test_owner_can_deactivate_and_reactivate_staff(): void
     {
         ['owner' => $owner, 'farm' => $farm] = $this->setUpFarm();
@@ -119,5 +134,37 @@ class FarmStaffTest extends TestCase
         ]);
 
         $response->assertForbidden();
+    }
+
+    public function test_cross_farm_staff_not_found(): void
+    {
+        ['owner' => $owner, 'farm' => $farm] = $this->setUpFarm();
+        $otherFarm = Farm::factory()->create();
+        $otherStaff = Staff::factory()->create(['farm_id' => $otherFarm->id]);
+
+        $this->actingAs($owner)
+            ->put(route('farm.members.staff-password', [$farm, $otherStaff]), ['password' => 'newsecret123'])
+            ->assertNotFound();
+        $this->actingAs($owner)
+            ->put(route('farm.members.staff-toggle', [$farm, $otherStaff]))
+            ->assertNotFound();
+        $this->actingAs($owner)
+            ->delete(route('farm.members.staff-destroy', [$farm, $otherStaff]))
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('staff', ['id' => $otherStaff->id, 'is_active' => true]);
+    }
+
+    public function test_plain_member_cannot_toggle_staff(): void
+    {
+        ['farm' => $farm] = $this->setUpFarm();
+        $member = User::factory()->create();
+        $farm->users()->attach($member->id, ['role' => 'member']);
+        $staff = Staff::factory()->create(['farm_id' => $farm->id]);
+
+        $response = $this->actingAs($member)->put(route('farm.members.staff-toggle', [$farm, $staff]));
+
+        $response->assertForbidden();
+        $this->assertTrue($staff->fresh()->is_active);
     }
 }

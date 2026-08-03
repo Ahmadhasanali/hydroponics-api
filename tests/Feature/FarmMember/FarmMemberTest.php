@@ -109,4 +109,14 @@ class FarmMemberTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    public function test_non_member_cannot_view_members_index(): void
+    {
+        ['farm' => $farm] = $this->setUpFarm();
+        $outsider = User::factory()->create();
+
+        $response = $this->actingAs($outsider)->get(route('farm.members.index', $farm));
+
+        $response->assertForbidden();
+    }
 }

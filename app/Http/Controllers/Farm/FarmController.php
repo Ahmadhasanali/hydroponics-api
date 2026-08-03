@@ -90,6 +90,10 @@ class FarmController extends Controller
 
         $newOwner = $farm->users()->findOrFail($validated['new_owner_id']);
 
+        if ($newOwner->id === $request->user()->id) {
+            return back()->withErrors(['new_owner_id' => 'Anda tidak dapat mentransfer kepemilikan ke diri sendiri.']);
+        }
+
         DB::transaction(function () use ($farm, $newOwner, $request) {
             $farm->users()->updateExistingPivot($newOwner->id, ['role' => 'owner']);
             $farm->users()->updateExistingPivot($request->user()->id, ['role' => 'manager']);

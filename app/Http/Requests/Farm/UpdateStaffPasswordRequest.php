@@ -21,4 +21,15 @@ class UpdateStaffPasswordRequest extends FormRequest
             'password' => ['required', 'string', 'min:8'],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'password.required' => 'Password wajib diisi.',
+            'password.min' => 'Password minimal 8 karakter.',
+        ];
+    }
 }

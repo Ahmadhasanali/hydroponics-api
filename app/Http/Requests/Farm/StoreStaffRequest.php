@@ -25,8 +25,7 @@ class StoreStaffRequest extends FormRequest
             'username' => [
                 'required', 'string', 'max:255',
                 Rule::unique('staff', 'username')
-                    ->where('farm_id', $farmId)
-                    ->whereNull('deleted_at'),
+                    ->where('farm_id', $farmId),
             ],
             'password' => ['required', 'string', 'min:8'],
         ];

@@ -38,18 +38,18 @@
         <div class="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4">
             @php
                 $navs = [
-                    ['label' => 'Dashboard', 'route' => 'staff.dashboard'],
-                    ['label' => 'Monitoring', 'route' => 'staff.monitoring.create'],
-                    ['label' => 'AB Mix', 'route' => 'staff.nutrient.create'],
-                    ['label' => 'pH Down', 'route' => 'staff.ph-down.create'],
-                    ['label' => 'Catatan Saya', 'route' => 'staff.monitoring.index'],
-                    ['label' => 'Laporan', 'route' => 'staff.reports.monitoring'],
+                    ['label' => 'Dashboard', 'route' => 'staff.dashboard', 'active' => ['staff.dashboard']],
+                    ['label' => 'Monitoring', 'route' => 'staff.monitoring.create', 'active' => ['staff.monitoring.create', 'staff.monitoring.edit', 'staff.monitoring.update', 'staff.monitoring.store']],
+                    ['label' => 'AB Mix', 'route' => 'staff.nutrient.create', 'active' => ['staff.nutrient.create', 'staff.nutrient.edit', 'staff.nutrient.update', 'staff.nutrient.store']],
+                    ['label' => 'pH Down', 'route' => 'staff.ph-down.create', 'active' => ['staff.ph-down.create', 'staff.ph-down.edit', 'staff.ph-down.update', 'staff.ph-down.store']],
+                    ['label' => 'Catatan Saya', 'route' => 'staff.monitoring.index', 'active' => ['staff.monitoring.index']],
+                    ['label' => 'Laporan', 'route' => 'staff.reports.monitoring', 'active' => ['staff.reports.monitoring', 'staff.reports.nutrient', 'staff.reports.ph-down']],
                 ];
             @endphp
             @foreach($navs as $nav)
                 @if(Route::has($nav['route']))
                     <a href="{{ route($nav['route']) }}"
-                        class="whitespace-nowrap px-4 py-3 text-sm font-semibold text-slate-600 transition hover:text-[#1a1c1e] {{ request()->routeIs(str_replace('.create', '.*', $nav['route']), $nav['route']) ? 'border-b-2 border-[#ffce54] text-[#1a1c1e]' : '' }}">
+                        class="whitespace-nowrap px-4 py-3 text-sm font-semibold text-slate-600 transition hover:text-[#1a1c1e] {{ request()->routeIs($nav['active']) ? 'border-b-2 border-[#ffce54] text-[#1a1c1e]' : '' }}">
                         {{ $nav['label'] }}
                     </a>
                 @endif

@@ -28,7 +28,7 @@
                         @foreach($logs as $log)
                             <div class="flex items-start gap-4 rounded-[2rem] border border-slate-200/60 bg-white p-4 shadow-sm shadow-slate-900/5">
                                 <span class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ffce54]/15 text-sm font-bold text-[#d4a020]">
-                                    {{ strtoupper(substr($log->user?->name ?? $log->staff?->name ?? '—', 0, 2)) }}
+                                    {{ strtoupper(mb_substr($log->user?->name ?? $log->staff?->name ?? '—', 0, 2)) }}
                                 </span>
                                 <div class="min-w-0 flex-1">
                                     <p class="text-sm text-slate-700">

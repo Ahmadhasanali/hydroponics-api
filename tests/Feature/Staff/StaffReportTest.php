@@ -68,4 +68,22 @@ class StaffReportTest extends TestCase
         $response->assertOk();
         $response->assertSee('12.50');
     }
+
+    public function test_monitoring_report_ignores_foreign_tank(): void
+    {
+        ['staff' => $staff, 'tank' => $tank] = $this->setUpStaff();
+        $otherFarm = Farm::factory()->create();
+        $otherTank = Tank::factory()->create(['farm_id' => $otherFarm->id]);
+        DailyMonitoring::factory()->create(['tank_id' => $otherTank->id, 'ppm' => 777, 'ph' => 6.5, 'log_date' => '2026-08-01']);
+
+        $response = $this->actingAs($staff, 'staff')->get(route('staff.reports.monitoring', [
+            'tank_id' => $otherTank->id,
+            'start_date' => '2026-08-01',
+            'end_date' => '2026-08-31',
+        ]));
+
+        $response->assertOk();
+        $response->assertDontSee('777');
+        $response->assertSee('Tidak Ada Data');
+    }
 }

@@ -15,6 +15,8 @@ class FarmUserController extends Controller
 {
     public function index(Request $request, Farm $farm): View
     {
+        $this->authorize('view', $farm);
+
         $farm->load([
             'users' => function ($query) {
                 $query->orderBy('pivot_created_at');
@@ -57,6 +59,10 @@ class FarmUserController extends Controller
     public function destroy(Request $request, Farm $farm, FarmUser $farmUser): RedirectResponse
     {
         Gate::authorize('manageMembers', $farm);
+
+        if ($farmUser->farm_id !== $farm->id) {
+            return back()->withErrors(['error' => 'Anggota tidak ditemukan.']);
+        }
 
         if ($farmUser->role === 'owner') {
             return back()->withErrors(['error' => 'Pemilik kebun tidak dapat dihapus.']);

@@ -16,7 +16,7 @@ class ActivityLogController extends Controller
 
         $farmId = $this->selectedFarm($request)->id;
         $logs = ActivityLog::where('farm_id', $farmId)
-            ->with('user')
+            ->with(['user', 'staff'])
             ->latest('created_at')
             ->paginate(30);
 
