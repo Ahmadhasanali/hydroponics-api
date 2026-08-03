@@ -180,20 +180,20 @@
             </section>
         </main>
     </div>
+
+    <script>
+        (function () {
+            const modeRadios = document.querySelectorAll('input[name="target_mode"]');
+            const specificBox = document.getElementById('specific-targets');
+
+            const toggle = () => {
+                const checked = document.querySelector('input[name="target_mode"]:checked');
+                specificBox.classList.toggle('hidden', !checked || checked.value !== 'specific');
+            };
+
+            modeRadios.forEach((radio) => radio.addEventListener('change', toggle));
+            toggle();
+        })();
+    </script>
 @endsection
-
-<script>
-    (function () {
-        const modeRadios = document.querySelectorAll('input[name="target_mode"]');
-        const specificBox = document.getElementById('specific-targets');
-
-        const toggle = () => {
-            const checked = document.querySelector('input[name="target_mode"]:checked');
-            specificBox.classList.toggle('hidden', !checked || checked.value !== 'specific');
-        };
-
-        modeRadios.forEach((radio) => radio.addEventListener('change', toggle));
-        toggle();
-    })();
-</script>
 
