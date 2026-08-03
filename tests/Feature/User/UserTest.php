@@ -4,7 +4,6 @@ namespace Tests\Feature\User;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
-use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class UserTest extends TestCase
@@ -140,6 +139,23 @@ class UserTest extends TestCase
 
         $response->assertRedirect(route('user.index'));
         $this->assertNotNull(User::where('email', 'petani@example.com')->first()->email_verified_at);
+    }
+
+    public function test_admin_can_store_two_users_with_same_name(): void
+    {
+        User::factory()->create(['name' => 'Petani Sama']);
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->post(route('user.store'), [
+            'name' => 'Petani Sama',
+            'email' => 'beda@example.com',
+        ]);
+
+        $response->assertRedirect(route('user.index'));
+        $this->assertDatabaseHas('users', [
+            'name' => 'Petani Sama',
+            'email' => 'beda@example.com',
+        ]);
     }
 
     public function test_factory_has_verified_and_unverified_states(): void

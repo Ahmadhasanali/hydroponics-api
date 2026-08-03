@@ -82,4 +82,25 @@ class RegistrationTest extends TestCase
 
         $response->assertSessionHasErrors('password');
     }
+
+    public function test_user_can_register_with_duplicate_name(): void
+    {
+        Notification::fake();
+
+        User::factory()->create(['name' => 'Petani Baru']);
+
+        $response = $this->post(route('register'), [
+            'name' => 'Petani Baru',
+            'email' => 'lain@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $response->assertRedirect('/email/verify');
+        $this->assertAuthenticated();
+        $this->assertDatabaseHas('users', [
+            'name' => 'Petani Baru',
+            'email' => 'lain@example.com',
+        ]);
+    }
 }
