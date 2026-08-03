@@ -119,13 +119,20 @@ class ReminderTargetResolver
         $targets = [];
 
         foreach ($targetIds as $targetId) {
-            [$type, $id] = explode(':', $targetId, 2);
+            $parts = explode(':', $targetId, 2);
 
-            if ($type === Staff::class) {
-                $candidate = Staff::query()->find($id);
-            } else {
-                $candidate = User::query()->find($id);
+            if (count($parts) !== 2 || ! ctype_digit($parts[1])) {
+                continue;
             }
+
+            [$type, $id] = $parts;
+            $id = (int) $id;
+
+            $candidate = match ($type) {
+                Staff::class => Staff::query()->find($id),
+                User::class => User::query()->find($id),
+                default => null,
+            };
 
             if ($candidate && $this->canTarget($actor, $farm, $candidate)) {
                 $targets[] = ['type' => $candidate::class, 'id' => $candidate->id];

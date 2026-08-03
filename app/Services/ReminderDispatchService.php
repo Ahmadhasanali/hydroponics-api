@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ReminderStatus;
+use App\Models\Farm\Staff;
 use App\Models\Reminder;
 use App\Models\Reminder\ReminderOccurrence;
 
@@ -26,6 +27,7 @@ class ReminderDispatchService
             ->whereNotNull('advance_notify_at')
             ->where('advance_notify_at', '<=', now())
             ->whereNull('advance_notified_at')
+            ->whereHas('reminder', fn ($q) => $q->where('is_active', true))
             ->with(['reminder.targets.targetable'])
             ->get()
             ->each(function (ReminderOccurrence $occurrence) {
@@ -47,6 +49,7 @@ class ReminderDispatchService
             ->where('status', ReminderStatus::Pending->value)
             ->where('scheduled_at', '<=', now())
             ->whereNull('notified_at')
+            ->whereHas('reminder', fn ($q) => $q->where('is_active', true))
             ->with(['reminder.targets.targetable'])
             ->get()
             ->each(function (ReminderOccurrence $occurrence) {
@@ -56,7 +59,6 @@ class ReminderDispatchService
                     $reminder,
                     $reminder->title,
                     $reminder->body,
-                    route('farm.reminders.show', [$reminder->farm_id, $reminder->id]),
                 );
 
                 $occurrence->update(['notified_at' => now()]);
@@ -69,6 +71,10 @@ class ReminderDispatchService
 
     private function createNextOccurrence(Reminder $reminder, ReminderOccurrence $occurrence): void
     {
+        if (! $reminder->is_active) {
+            return;
+        }
+
         $next = $this->recurrence->nextOccurrenceAfter($reminder, $occurrence->scheduled_at);
 
         if (! $next) {
@@ -99,9 +105,17 @@ class ReminderDispatchService
         foreach ($reminder->targets as $target) {
             $recipient = $target->targetable;
 
-            if ($recipient) {
-                $this->push->sendToUser($recipient, $title, $body, $url);
+            if (! $recipient) {
+                continue;
             }
+
+            // Staff menggunakan guard staff — arahkan ke kalender staff, bukan
+            // route web farm (yang akan melempar ke login web).
+            $recipientUrl = $recipient instanceof Staff
+                ? route('staff.reminders.calendar')
+                : $url ?? route('farm.reminders.show', [$reminder->farm_id, $reminder->id]);
+
+            $this->push->sendToUser($recipient, $title, $body, $recipientUrl);
         }
     }
 }

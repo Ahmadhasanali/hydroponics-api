@@ -13,6 +13,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class StaffReminderController extends Controller
 {
@@ -86,34 +87,36 @@ class StaffReminderController extends Controller
             return back()->withErrors(['target_mode' => 'Tidak ada target yang valid.'])->withInput();
         }
 
-        $reminder = Reminder::query()->create([
-            'farm_id' => $farm->id,
-            'created_by_type' => Staff::class,
-            'created_by_id' => $staff->id,
-            'title' => $validated['title'],
-            'body' => $validated['body'],
-            'starts_at' => $validated['starts_at'],
-            'recurrence' => $validated['recurrence'] ?? ['type' => 'none'],
-            'advance_notify_minutes' => $validated['advance_notify_minutes'] ?? null,
-        ]);
-
-        foreach ($targets as $target) {
-            ReminderTarget::query()->create([
-                'reminder_id' => $reminder->id,
-                'targetable_type' => $target['type'],
-                'targetable_id' => $target['id'],
+        DB::transaction(function () use ($request, $farm, $validated, $targets) {
+            $reminder = Reminder::query()->create([
+                'farm_id' => $farm->id,
+                'created_by_type' => Staff::class,
+                'created_by_id' => $request->user()->id,
+                'title' => $validated['title'],
+                'body' => $validated['body'],
+                'starts_at' => $validated['starts_at'],
+                'recurrence' => $validated['recurrence'] ?? ['type' => 'none'],
+                'advance_notify_minutes' => $validated['advance_notify_minutes'] ?? null,
             ]);
-        }
 
-        $startsAt = Carbon::parse($validated['starts_at']);
+            foreach ($targets as $target) {
+                ReminderTarget::query()->create([
+                    'reminder_id' => $reminder->id,
+                    'targetable_type' => $target['type'],
+                    'targetable_id' => $target['id'],
+                ]);
+            }
 
-        ReminderOccurrence::query()->create([
-            'reminder_id' => $reminder->id,
-            'scheduled_at' => $startsAt,
-            'advance_notify_at' => isset($validated['advance_notify_minutes'])
-                ? $startsAt->copy()->subMinutes($validated['advance_notify_minutes'])
-                : null,
-        ]);
+            $startsAt = Carbon::parse($validated['starts_at']);
+
+            ReminderOccurrence::query()->create([
+                'reminder_id' => $reminder->id,
+                'scheduled_at' => $startsAt,
+                'advance_notify_at' => isset($validated['advance_notify_minutes'])
+                    ? $startsAt->copy()->subMinutes($validated['advance_notify_minutes'])
+                    : null,
+            ]);
+        });
 
         return redirect()->route('staff.reminders.index')
             ->with('success', 'Reminder berhasil dibuat.');

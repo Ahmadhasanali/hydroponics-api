@@ -15,6 +15,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class ReminderController extends Controller
@@ -31,6 +32,7 @@ class ReminderController extends Controller
         $visibleIds = $this->resolver->visibleReminderIds($request->user());
 
         $reminders = Reminder::query()
+            ->where('farm_id', $farm->id)
             ->whereIn('id', $visibleIds)
             ->with('targets.targetable')
             ->orderByDesc('starts_at')
@@ -79,34 +81,38 @@ class ReminderController extends Controller
 
         $recurrence = $request->recurrence() ?? ['type' => 'none'];
 
-        $reminder = Reminder::query()->create([
-            'farm_id' => $farm->id,
-            'created_by_type' => $request->user()::class,
-            'created_by_id' => $request->user()->id,
-            'title' => $validated['title'],
-            'body' => $validated['body'],
-            'starts_at' => $validated['starts_at'],
-            'recurrence' => $recurrence,
-            'advance_notify_minutes' => $validated['advance_notify_minutes'] ?? null,
-        ]);
-
-        foreach ($targets as $target) {
-            ReminderTarget::query()->create([
-                'reminder_id' => $reminder->id,
-                'targetable_type' => $target['type'],
-                'targetable_id' => $target['id'],
+        $reminder = DB::transaction(function () use ($request, $farm, $validated, $targets, $recurrence) {
+            $reminder = Reminder::query()->create([
+                'farm_id' => $farm->id,
+                'created_by_type' => $request->user()::class,
+                'created_by_id' => $request->user()->id,
+                'title' => $validated['title'],
+                'body' => $validated['body'],
+                'starts_at' => $validated['starts_at'],
+                'recurrence' => $recurrence,
+                'advance_notify_minutes' => $validated['advance_notify_minutes'] ?? null,
             ]);
-        }
 
-        $startsAt = Carbon::parse($validated['starts_at']);
+            foreach ($targets as $target) {
+                ReminderTarget::query()->create([
+                    'reminder_id' => $reminder->id,
+                    'targetable_type' => $target['type'],
+                    'targetable_id' => $target['id'],
+                ]);
+            }
 
-        ReminderOccurrence::query()->create([
-            'reminder_id' => $reminder->id,
-            'scheduled_at' => $startsAt,
-            'advance_notify_at' => isset($validated['advance_notify_minutes'])
-                ? $startsAt->copy()->subMinutes($validated['advance_notify_minutes'])
-                : null,
-        ]);
+            $startsAt = Carbon::parse($validated['starts_at']);
+
+            ReminderOccurrence::query()->create([
+                'reminder_id' => $reminder->id,
+                'scheduled_at' => $startsAt,
+                'advance_notify_at' => isset($validated['advance_notify_minutes'])
+                    ? $startsAt->copy()->subMinutes($validated['advance_notify_minutes'])
+                    : null,
+            ]);
+
+            return $reminder;
+        });
 
         return redirect()->route('farm.reminders.index', $farm)
             ->with('success', 'Reminder berhasil dibuat.');
@@ -115,6 +121,10 @@ class ReminderController extends Controller
     public function show(Request $request, Farm $farm, Reminder $reminder): View
     {
         $this->authorize('view', $reminder);
+
+        if ($reminder->farm_id !== $farm->id) {
+            abort(404);
+        }
 
         $reminder->load(['targets.targetable', 'occurrences']);
 
@@ -125,11 +135,21 @@ class ReminderController extends Controller
     {
         Gate::authorize('update', $reminder);
 
+        if ($reminder->farm_id !== $farm->id) {
+            abort(404);
+        }
+
         return view('reminders.edit', compact('farm', 'reminder'));
     }
 
     public function update(UpdateReminderRequest $request, Farm $farm, Reminder $reminder): RedirectResponse
     {
+        Gate::authorize('update', $reminder);
+
+        if ($reminder->farm_id !== $farm->id) {
+            abort(404);
+        }
+
         $validated = $request->validated();
 
         $reminder->update([
@@ -164,6 +184,10 @@ class ReminderController extends Controller
     {
         Gate::authorize('delete', $reminder);
 
+        if ($reminder->farm_id !== $farm->id) {
+            abort(404);
+        }
+
         $reminder->delete();
 
         return redirect()->route('farm.reminders.index', $farm)
@@ -180,10 +204,14 @@ class ReminderController extends Controller
 
         $visibleIds = $this->resolver->visibleReminderIds($request->user());
 
-        $reminders = Reminder::query()->whereIn('id', $visibleIds)->get();
+        $reminders = Reminder::query()
+            ->where('farm_id', $farm->id)
+            ->whereIn('id', $visibleIds)
+            ->get();
 
         // Occurrence tersimpan (sudah di-track) dalam rentang bulan
         $stored = ReminderOccurrence::query()
+            ->whereHas('reminder', fn ($q) => $q->where('farm_id', $farm->id))
             ->whereIn('reminder_id', $visibleIds)
             ->whereBetween('scheduled_at', [$start, $end])
             ->with('reminder')
@@ -216,6 +244,10 @@ class ReminderController extends Controller
 
     public function occurrenceDone(Request $request, Farm $farm, ReminderOccurrence $occurrence): RedirectResponse
     {
+        if ($occurrence->reminder->farm_id !== $farm->id) {
+            abort(403);
+        }
+
         $user = $request->user();
 
         $canComplete = $occurrence->reminder->created_by_type === User::class
@@ -239,6 +271,10 @@ class ReminderController extends Controller
 
     public function occurrenceSkip(Request $request, Farm $farm, ReminderOccurrence $occurrence): RedirectResponse
     {
+        if ($occurrence->reminder->farm_id !== $farm->id) {
+            abort(403);
+        }
+
         $user = $request->user();
 
         $canSkip = $occurrence->reminder->created_by_type === User::class

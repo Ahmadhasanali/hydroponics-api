@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict RXPWjSOd66M57ng1GM8m31i3GpTkAGTcf5MYgQd62xdzFhPNpQL85vy9AoTDI2f
+\restrict YUAEpz3POujeex9WS7Qq9UpVhg3QG3wXAQelL2Or80GRL1txOS4vBSW6ylCYBS1
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 18.4 (Ubuntu 18.4-1.pgdg24.04+1)
@@ -30,12 +30,13 @@ SET default_table_access_method = heap;
 CREATE TABLE public.activity_logs (
     id bigint NOT NULL,
     farm_id bigint NOT NULL,
-    user_id bigint NOT NULL,
+    user_id bigint,
     action character varying(255) NOT NULL,
     entity_type character varying(255) NOT NULL,
     entity_id bigint,
     description text,
-    created_at timestamp(0) without time zone
+    created_at timestamp(0) without time zone,
+    staff_id bigint
 );
 
 
@@ -151,7 +152,7 @@ ALTER SEQUENCE public.chat_sessions_id_seq OWNED BY public.chat_sessions.id;
 
 CREATE TABLE public.daily_monitorings (
     id bigint NOT NULL,
-    user_id bigint NOT NULL,
+    user_id bigint,
     tank_id bigint NOT NULL,
     log_date date NOT NULL,
     ppm numeric(10,2) NOT NULL,
@@ -160,7 +161,8 @@ CREATE TABLE public.daily_monitorings (
     notes text,
     created_at timestamp(0) without time zone,
     updated_at timestamp(0) without time zone,
-    deleted_at timestamp(0) without time zone
+    deleted_at timestamp(0) without time zone,
+    staff_id bigint
 );
 
 
@@ -375,7 +377,7 @@ ALTER SEQUENCE public.migrations_id_seq OWNED BY public.migrations.id;
 
 CREATE TABLE public.nutrient_additions (
     id bigint NOT NULL,
-    user_id bigint NOT NULL,
+    user_id bigint,
     tank_id bigint NOT NULL,
     log_date date NOT NULL,
     ppm_before numeric(10,2) NOT NULL,
@@ -385,7 +387,8 @@ CREATE TABLE public.nutrient_additions (
     notes text,
     created_at timestamp(0) without time zone,
     updated_at timestamp(0) without time zone,
-    deleted_at timestamp(0) without time zone
+    deleted_at timestamp(0) without time zone,
+    staff_id bigint
 );
 
 
@@ -425,7 +428,7 @@ CREATE TABLE public.password_reset_tokens (
 
 CREATE TABLE public.ph_down_logs (
     id bigint NOT NULL,
-    user_id bigint NOT NULL,
+    user_id bigint,
     tank_id bigint NOT NULL,
     log_date date NOT NULL,
     ph_before numeric(5,2) NOT NULL,
@@ -434,7 +437,8 @@ CREATE TABLE public.ph_down_logs (
     notes text,
     created_at timestamp(0) without time zone,
     updated_at timestamp(0) without time zone,
-    deleted_at timestamp(0) without time zone
+    deleted_at timestamp(0) without time zone,
+    staff_id bigint
 );
 
 
@@ -463,12 +467,13 @@ ALTER SEQUENCE public.ph_down_logs_id_seq OWNED BY public.ph_down_logs.id;
 
 CREATE TABLE public.push_subscriptions (
     id bigint NOT NULL,
-    user_id bigint NOT NULL,
     fcm_token character varying(255) NOT NULL,
     platform character varying(255) DEFAULT 'android'::character varying NOT NULL,
     device_info character varying(255),
     created_at timestamp(0) without time zone,
-    updated_at timestamp(0) without time zone
+    updated_at timestamp(0) without time zone,
+    subscribable_type character varying(255),
+    subscribable_id bigint
 );
 
 
@@ -492,6 +497,118 @@ ALTER SEQUENCE public.push_subscriptions_id_seq OWNED BY public.push_subscriptio
 
 
 --
+-- Name: reminder_occurrences; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reminder_occurrences (
+    id bigint NOT NULL,
+    reminder_id bigint NOT NULL,
+    scheduled_at timestamp(0) without time zone NOT NULL,
+    advance_notify_at timestamp(0) without time zone,
+    advance_notified_at timestamp(0) without time zone,
+    notified_at timestamp(0) without time zone,
+    status character varying(255) DEFAULT 'pending'::character varying NOT NULL,
+    completed_by_type character varying(255),
+    completed_by_id bigint,
+    completed_at timestamp(0) without time zone,
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone
+);
+
+
+--
+-- Name: reminder_occurrences_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.reminder_occurrences_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: reminder_occurrences_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.reminder_occurrences_id_seq OWNED BY public.reminder_occurrences.id;
+
+
+--
+-- Name: reminder_targets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reminder_targets (
+    id bigint NOT NULL,
+    reminder_id bigint NOT NULL,
+    targetable_type character varying(255) NOT NULL,
+    targetable_id bigint NOT NULL,
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone
+);
+
+
+--
+-- Name: reminder_targets_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.reminder_targets_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: reminder_targets_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.reminder_targets_id_seq OWNED BY public.reminder_targets.id;
+
+
+--
+-- Name: reminders; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reminders (
+    id bigint NOT NULL,
+    farm_id bigint NOT NULL,
+    created_by_type character varying(255) NOT NULL,
+    created_by_id bigint NOT NULL,
+    title character varying(255) NOT NULL,
+    body text NOT NULL,
+    starts_at timestamp(0) without time zone NOT NULL,
+    recurrence json,
+    advance_notify_minutes integer,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone,
+    deleted_at timestamp(0) without time zone
+);
+
+
+--
+-- Name: reminders_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.reminders_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: reminders_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.reminders_id_seq OWNED BY public.reminders.id;
+
+
+--
 -- Name: sessions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -503,6 +620,42 @@ CREATE TABLE public.sessions (
     payload text NOT NULL,
     last_activity integer NOT NULL
 );
+
+
+--
+-- Name: staff; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.staff (
+    id bigint NOT NULL,
+    farm_id bigint NOT NULL,
+    name character varying(255) NOT NULL,
+    username character varying(255) NOT NULL,
+    password character varying(255) NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    created_at timestamp(0) without time zone,
+    updated_at timestamp(0) without time zone,
+    deleted_at timestamp(0) without time zone
+);
+
+
+--
+-- Name: staff_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.staff_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: staff_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.staff_id_seq OWNED BY public.staff.id;
 
 
 --
@@ -672,6 +825,34 @@ ALTER TABLE ONLY public.push_subscriptions ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
+-- Name: reminder_occurrences id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reminder_occurrences ALTER COLUMN id SET DEFAULT nextval('public.reminder_occurrences_id_seq'::regclass);
+
+
+--
+-- Name: reminder_targets id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reminder_targets ALTER COLUMN id SET DEFAULT nextval('public.reminder_targets_id_seq'::regclass);
+
+
+--
+-- Name: reminders id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reminders ALTER COLUMN id SET DEFAULT nextval('public.reminders_id_seq'::regclass);
+
+
+--
+-- Name: staff id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff ALTER COLUMN id SET DEFAULT nextval('public.staff_id_seq'::regclass);
+
+
+--
 -- Name: tanks id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -758,6 +939,14 @@ ALTER TABLE ONLY public.farm_users
 
 
 --
+-- Name: farms farms_name_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.farms
+    ADD CONSTRAINT farms_name_unique UNIQUE (name);
+
+
+--
 -- Name: farms farms_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -830,11 +1019,59 @@ ALTER TABLE ONLY public.push_subscriptions
 
 
 --
+-- Name: reminder_occurrences reminder_occurrences_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reminder_occurrences
+    ADD CONSTRAINT reminder_occurrences_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: reminder_occurrences reminder_occurrences_reminder_id_scheduled_at_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reminder_occurrences
+    ADD CONSTRAINT reminder_occurrences_reminder_id_scheduled_at_unique UNIQUE (reminder_id, scheduled_at);
+
+
+--
+-- Name: reminder_targets reminder_targets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reminder_targets
+    ADD CONSTRAINT reminder_targets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: reminders reminders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reminders
+    ADD CONSTRAINT reminders_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.sessions
     ADD CONSTRAINT sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: staff staff_farm_id_username_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff
+    ADD CONSTRAINT staff_farm_id_username_unique UNIQUE (farm_id, username);
+
+
+--
+-- Name: staff staff_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff
+    ADD CONSTRAINT staff_pkey PRIMARY KEY (id);
 
 
 --
@@ -911,6 +1148,41 @@ CREATE INDEX jobs_queue_index ON public.jobs USING btree (queue);
 
 
 --
+-- Name: push_subscriptions_subscribable_type_subscribable_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX push_subscriptions_subscribable_type_subscribable_id_index ON public.push_subscriptions USING btree (subscribable_type, subscribable_id);
+
+
+--
+-- Name: reminder_occurrences_completed_by_type_completed_by_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX reminder_occurrences_completed_by_type_completed_by_id_index ON public.reminder_occurrences USING btree (completed_by_type, completed_by_id);
+
+
+--
+-- Name: reminder_targets_targetable_type_targetable_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX reminder_targets_targetable_type_targetable_id_index ON public.reminder_targets USING btree (targetable_type, targetable_id);
+
+
+--
+-- Name: reminders_created_by_type_created_by_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX reminders_created_by_type_created_by_id_index ON public.reminders USING btree (created_by_type, created_by_id);
+
+
+--
+-- Name: reminders_farm_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX reminders_farm_id_index ON public.reminders USING btree (farm_id);
+
+
+--
 -- Name: sessions_last_activity_index; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -930,6 +1202,14 @@ CREATE INDEX sessions_user_id_index ON public.sessions USING btree (user_id);
 
 ALTER TABLE ONLY public.activity_logs
     ADD CONSTRAINT activity_logs_farm_id_foreign FOREIGN KEY (farm_id) REFERENCES public.farms(id) ON DELETE CASCADE;
+
+
+--
+-- Name: activity_logs activity_logs_staff_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.activity_logs
+    ADD CONSTRAINT activity_logs_staff_id_foreign FOREIGN KEY (staff_id) REFERENCES public.staff(id) ON DELETE SET NULL;
 
 
 --
@@ -954,6 +1234,14 @@ ALTER TABLE ONLY public.chat_messages
 
 ALTER TABLE ONLY public.chat_sessions
     ADD CONSTRAINT chat_sessions_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: daily_monitorings daily_monitorings_staff_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.daily_monitorings
+    ADD CONSTRAINT daily_monitorings_staff_id_foreign FOREIGN KEY (staff_id) REFERENCES public.staff(id) ON DELETE SET NULL;
 
 
 --
@@ -989,6 +1277,14 @@ ALTER TABLE ONLY public.farm_users
 
 
 --
+-- Name: nutrient_additions nutrient_additions_staff_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.nutrient_additions
+    ADD CONSTRAINT nutrient_additions_staff_id_foreign FOREIGN KEY (staff_id) REFERENCES public.staff(id) ON DELETE SET NULL;
+
+
+--
 -- Name: nutrient_additions nutrient_additions_tank_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1002,6 +1298,14 @@ ALTER TABLE ONLY public.nutrient_additions
 
 ALTER TABLE ONLY public.nutrient_additions
     ADD CONSTRAINT nutrient_additions_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: ph_down_logs ph_down_logs_staff_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ph_down_logs
+    ADD CONSTRAINT ph_down_logs_staff_id_foreign FOREIGN KEY (staff_id) REFERENCES public.staff(id) ON DELETE SET NULL;
 
 
 --
@@ -1021,11 +1325,35 @@ ALTER TABLE ONLY public.ph_down_logs
 
 
 --
--- Name: push_subscriptions push_subscriptions_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: reminder_occurrences reminder_occurrences_reminder_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.push_subscriptions
-    ADD CONSTRAINT push_subscriptions_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.reminder_occurrences
+    ADD CONSTRAINT reminder_occurrences_reminder_id_foreign FOREIGN KEY (reminder_id) REFERENCES public.reminders(id) ON DELETE CASCADE;
+
+
+--
+-- Name: reminder_targets reminder_targets_reminder_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reminder_targets
+    ADD CONSTRAINT reminder_targets_reminder_id_foreign FOREIGN KEY (reminder_id) REFERENCES public.reminders(id) ON DELETE CASCADE;
+
+
+--
+-- Name: reminders reminders_farm_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reminders
+    ADD CONSTRAINT reminders_farm_id_foreign FOREIGN KEY (farm_id) REFERENCES public.farms(id) ON DELETE CASCADE;
+
+
+--
+-- Name: staff staff_farm_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff
+    ADD CONSTRAINT staff_farm_id_foreign FOREIGN KEY (farm_id) REFERENCES public.farms(id) ON DELETE CASCADE;
 
 
 --
@@ -1048,13 +1376,13 @@ ALTER TABLE ONLY public.tanks
 -- PostgreSQL database dump complete
 --
 
-\unrestrict RXPWjSOd66M57ng1GM8m31i3GpTkAGTcf5MYgQd62xdzFhPNpQL85vy9AoTDI2f
+\unrestrict YUAEpz3POujeex9WS7Qq9UpVhg3QG3wXAQelL2Or80GRL1txOS4vBSW6ylCYBS1
 
 --
 -- PostgreSQL database dump
 --
 
-\restrict XnDZEXduUjnmt9foehmhQbAKE45DfgTIF1z8Azz9aZ2HqAgl9Btglrce5ddJVMT
+\restrict 1WugfldOawa4LcSrBGmFXK474nh043VOZlN2slpnvse7XkgOTS6hAsbKlSGPxbU
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 18.4 (Ubuntu 18.4-1.pgdg24.04+1)
@@ -1100,6 +1428,14 @@ COPY public.migrations (id, migration, batch) FROM stdin;
 22	2026_08_02_000001_add_email_verified_at_to_users_table	1
 23	2026_08_02_000001_rebuild_password_reset_tokens_table	1
 24	2026_08_03_000000_drop_unique_index_on_users_name_column	2
+25	2026_08_03_000000_create_staff_table	3
+26	2026_08_03_000001_add_staff_id_to_transaction_tables	4
+27	2026_08_03_000002_make_farms_name_unique	5
+28	2026_08_03_000003_migrate_farm_member_role_to_manager	5
+29	2026_08_03_100001_create_reminders_table	6
+30	2026_08_03_100002_create_reminder_targets_table	6
+31	2026_08_03_100003_create_reminder_occurrences_table	6
+32	2026_08_03_100004_modify_push_subscriptions_table	6
 \.
 
 
@@ -1107,12 +1443,12 @@ COPY public.migrations (id, migration, batch) FROM stdin;
 -- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.migrations_id_seq', 24, true);
+SELECT pg_catalog.setval('public.migrations_id_seq', 32, true);
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict XnDZEXduUjnmt9foehmhQbAKE45DfgTIF1z8Azz9aZ2HqAgl9Btglrce5ddJVMT
+\unrestrict 1WugfldOawa4LcSrBGmFXK474nh043VOZlN2slpnvse7XkgOTS6hAsbKlSGPxbU
 

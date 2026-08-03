@@ -123,4 +123,21 @@ class ReminderTargetResolverTest extends TestCase
 
         $this->assertSame([], $targets);
     }
+
+    public function test_resolve_specific_skips_malformed_target_ids(): void
+    {
+        ['farm' => $farm, 'owner' => $owner, 'manager' => $manager] = $this->makeFarmWithRoles([
+            'owner' => 'owner',
+            'manager' => 'manager',
+        ]);
+
+        $resolver = new ReminderTargetResolver;
+
+        $targets = $resolver->resolveTargets($manager, $farm, 'specific', [
+            'garbage',
+            User::class.':'.$owner->id.':::x',
+        ]);
+
+        $this->assertSame([], $targets);
+    }
 }

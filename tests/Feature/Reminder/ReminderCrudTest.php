@@ -143,4 +143,94 @@ class ReminderCrudTest extends TestCase
             'completed_by_id' => $manager->id,
         ]);
     }
+
+    public function test_reminder_from_other_farm_is_hidden_from_index_and_occurrence_done_forbidden(): void
+    {
+        // Farm A: reminder dibuat oleh owner A
+        $ownerA = User::factory()->create();
+        $farmA = Farm::factory()->create(['created_by' => $ownerA->id]);
+        $farmA->users()->attach($ownerA->id, ['role' => 'owner']);
+
+        $reminderA = Reminder::factory()->create([
+            'farm_id' => $farmA->id,
+            'created_by_type' => User::class,
+            'created_by_id' => $ownerA->id,
+            'title' => 'Reminder Khusus Farm A',
+        ]);
+        $occurrenceA = ReminderOccurrence::factory()->create([
+            'reminder_id' => $reminderA->id,
+            'scheduled_at' => now()->subMinute(),
+        ]);
+
+        // Farm B: owner A juga anggota (owner)
+        $farmB = Farm::factory()->create(['created_by' => $ownerA->id]);
+        $farmB->users()->attach($ownerA->id, ['role' => 'owner']);
+        session()->put('selected_farm_id', $farmB->id);
+
+        // Index farm B tidak boleh menampilkan reminder dari farm A
+        $response = $this->actingAs($ownerA)->get(route('farm.reminders.index', $farmB));
+
+        $response->assertOk();
+        $response->assertDontSee('Reminder Khusus Farm A');
+
+        // occurrenceDone via route farm B harus 403
+        $response = $this->actingAs($ownerA)->post(
+            route('farm.reminders.occurrence-done', [$farmB, $occurrenceA]),
+        );
+
+        $response->assertForbidden();
+    }
+
+    public function test_malformed_target_ids_rejected_without_creating_reminder(): void
+    {
+        ['owner' => $owner, 'farm' => $farm] = $this->setUpFarm();
+        $manager = User::factory()->create();
+        $farm->users()->attach($manager->id, ['role' => 'manager']);
+
+        $response = $this->actingAs($owner)->post(route('farm.reminders.store', $farm), [
+            'title' => 'Target Rusak',
+            'body' => 'Tidak boleh tersimpan',
+            'starts_at' => now()->addDay()->format('Y-m-d H:i:s'),
+            'recurrence' => ['type' => 'none'],
+            'target_mode' => 'specific',
+            'target_ids' => ['garbage', User::class.':abc'],
+        ]);
+
+        $response->assertSessionHasErrors('target_ids.*');
+
+        $this->assertDatabaseMissing('reminders', ['title' => 'Target Rusak']);
+    }
+
+    public function test_valid_specific_target_ids_creates_reminder_for_same_farm_manager(): void
+    {
+        ['owner' => $owner, 'farm' => $farm] = $this->setUpFarm();
+        $manager = User::factory()->create();
+        $farm->users()->attach($manager->id, ['role' => 'manager']);
+
+        $response = $this->actingAs($owner)->post(route('farm.reminders.store', $farm), [
+            'title' => 'Reminder ke Manager',
+            'body' => 'Jadwal rutin',
+            'starts_at' => now()->addDay()->format('Y-m-d H:i:s'),
+            'recurrence' => ['type' => 'none'],
+            'target_mode' => 'specific',
+            'target_ids' => [User::class.':'.$manager->id],
+        ]);
+
+        $response->assertRedirect();
+
+        $this->assertDatabaseHas('reminders', [
+            'farm_id' => $farm->id,
+            'title' => 'Reminder ke Manager',
+        ]);
+
+        $reminder = Reminder::where('farm_id', $farm->id)
+            ->where('title', 'Reminder ke Manager')
+            ->firstOrFail();
+
+        $this->assertDatabaseHas('reminder_targets', [
+            'reminder_id' => $reminder->id,
+            'targetable_type' => User::class,
+            'targetable_id' => $manager->id,
+        ]);
+    }
 }
