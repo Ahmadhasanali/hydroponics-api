@@ -63,12 +63,11 @@
             pH Down
         </a>
 
-        @if ($hasFarm)
-            <a href="{{ route('farm.reminders.calendar', session('selected_farm_id', auth()->user()->farms()->first()->id)) }}"
-                class="sidebar-nav-link flex items-center gap-3 rounded-2xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-[#ffce54]/10 hover:text-[#1a1c1e] {{ request()->routeIs('farm.reminders.*') ? 'bg-[#ffce54]/15 text-[#1a1c1e]' : '' }}">
-                <i class="bi bi-bell text-base"></i>
-                Reminder
-            </a>
+        <a href="{{ route('farm.reminders.calendar', session('selected_farm_id', auth()->user()->farms()->first()->id)) }}"
+            class="sidebar-nav-link flex items-center gap-3 rounded-2xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-[#ffce54]/10 hover:text-[#1a1c1e] {{ request()->routeIs('farm.reminders.*') ? 'bg-[#ffce54]/15 text-[#1a1c1e]' : '' }}">
+            <i class="bi bi-bell text-base"></i>
+            Reminder
+        </a>
 
         {{-- Reports section --}}
         <p class="sidebar-text mt-4 px-3 pb-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Laporan</p>
