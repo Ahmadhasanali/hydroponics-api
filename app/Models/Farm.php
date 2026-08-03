@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Farm\ActivityLog;
 use App\Models\Farm\DailyMonitoring;
+use App\Models\Farm\Staff;
 use App\Models\Farm\Tank;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -48,6 +49,14 @@ class Farm extends Model
     public function tanks(): HasMany
     {
         return $this->hasMany(Tank::class);
+    }
+
+    /**
+     * @return HasMany<Staff,Farm>
+     */
+    public function staff(): HasMany
+    {
+        return $this->hasMany(Staff::class);
     }
 
     public function dailyMonitorings(): HasMany
