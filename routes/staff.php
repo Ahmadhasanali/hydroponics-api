@@ -5,6 +5,7 @@ use App\Http\Controllers\Staff\StaffDashboardController;
 use App\Http\Controllers\Staff\StaffMonitoringController;
 use App\Http\Controllers\Staff\StaffNutrientAdditionController;
 use App\Http\Controllers\Staff\StaffPhDownController;
+use App\Http\Controllers\Staff\StaffReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/staff/login', [StaffAuthController::class, 'showLoginForm'])->name('staff.login');
@@ -38,4 +39,8 @@ Route::middleware('auth:staff')->group(function () {
     Route::get('/staff/ph-down/{phDownLog}/edit', [StaffPhDownController::class, 'edit'])->name('staff.ph-down.edit');
     Route::put('/staff/ph-down/{phDownLog}', [StaffPhDownController::class, 'update'])->name('staff.ph-down.update');
     Route::delete('/staff/ph-down/{phDownLog}', [StaffPhDownController::class, 'destroy'])->name('staff.ph-down.destroy');
+
+    Route::get('/staff/reports/monitoring', [StaffReportController::class, 'monitoring'])->name('staff.reports.monitoring');
+    Route::get('/staff/reports/nutrient', [StaffReportController::class, 'nutrient'])->name('staff.reports.nutrient');
+    Route::get('/staff/reports/ph-down', [StaffReportController::class, 'phDown'])->name('staff.reports.ph-down');
 });
