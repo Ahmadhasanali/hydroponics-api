@@ -22,8 +22,8 @@ class DispatchRemindersTest extends TestCase
         parent::setUp();
 
         // Route farm.reminders.show baru didaftarkan di Task 8. Saat test ini
-        // berjalan, generate URL detail reminder lewat named route resolver agar
-        // service tetap menerima string URL (lihat juga komentar di service).
+        // berjalan, resolve named route tersebut lewat URL generator resolver
+        // agar service menerima string URL (route() tidak melempar exception).
         $this->app->make(UrlGenerator::class)->resolveMissingNamedRoutesUsing(
             fn (string $name, array $parameters): ?string => $name === 'farm.reminders.show'
                 ? 'http://localhost/farm/reminders/'.$parameters[1]
