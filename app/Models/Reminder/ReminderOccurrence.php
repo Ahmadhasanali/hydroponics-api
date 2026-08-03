@@ -46,7 +46,7 @@ class ReminderOccurrence extends Model
 
     public function completer(): MorphTo
     {
-        return $this->morphTo();
+        return $this->morphTo(__FUNCTION__, 'completed_by_type', 'completed_by_id');
     }
 
     public function markDone(string $completerType, int $completerId): void

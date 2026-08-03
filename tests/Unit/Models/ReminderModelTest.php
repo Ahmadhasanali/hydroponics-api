@@ -50,7 +50,11 @@ class ReminderModelTest extends TestCase
         $occurrence->markDone(User::class, $user->id);
 
         $this->assertSame(ReminderStatus::Done, $occurrence->status);
+        $this->assertTrue($occurrence->completer->is($user));
         $this->assertNotNull($occurrence->completed_at);
+        $this->assertSame(User::class, $occurrence->fresh()->completed_by_type);
+        $this->assertSame($user->id, $occurrence->fresh()->completed_by_id);
+        $this->assertNotNull($occurrence->fresh()->completed_at);
 
         $occurrence->markSkipped();
 
