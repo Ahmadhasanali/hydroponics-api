@@ -38,6 +38,33 @@
                         {{-- TODO: show tanks in this farm --}}
                         <p class="text-sm text-slate-400 italic">Daftar tank belum tersedia.</p>
                     </div>
+
+                    @can('transferOwnership', $farm)
+                        <div class="mt-8 rounded-[2rem] border border-slate-200/60 bg-white p-6 shadow-sm shadow-slate-900/5">
+                            <h3 class="text-lg font-semibold text-slate-900">Transfer Kepemilikan</h3>
+                            <p class="mt-1 text-sm text-slate-500">Serahkan kepemilikan kebun ke anggota lain. Anda akan menjadi manager.</p>
+                            <form action="{{ route('farm.transfer', $farm) }}" method="POST" class="mt-4 flex flex-wrap items-end gap-4"
+                                onsubmit="return confirm('Yakin ingin mentransfer kepemilikan kebun? Anda akan menjadi manager.')">
+                                @csrf
+                                <div class="flex-1 min-w-[220px]">
+                                    <label for="new_owner_id" class="block text-sm font-semibold text-slate-700">Anggota Baru</label>
+                                    <select name="new_owner_id" id="new_owner_id" required
+                                        class="mt-1.5 block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 transition focus:border-[#ffce54] focus:outline-none focus:ring-2 focus:ring-[#ffce54]/20">
+                                        @foreach($farm->users as $user)
+                                            @if($user->id !== auth()->id())
+                                                <option value="{{ $user->id }}">{{ $user->name }} ({{ ucfirst($user->pivot->role) }})</option>
+                                            @endif
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <button type="submit"
+                                    class="inline-flex items-center gap-2 rounded-2xl bg-[#ffce54] px-6 py-3 text-sm font-bold text-[#1a1c1e] shadow-sm transition hover:bg-[#f0b830]">
+                                    <i class="bi bi-arrow-left-right"></i>
+                                    Transfer
+                                </button>
+                            </form>
+                        </div>
+                    @endcan
                 </div>
             </section>
 
