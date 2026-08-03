@@ -214,11 +214,10 @@ class NoFarmEmptyStateTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get(route('farm.no-farm'));
-
-        $response->assertOk();
-        $response->assertSee('Belum Ada Farm');
-        $response->assertSee('Buat Farm Baru');
+        $this->actingAs($user)
+            ->view('farm.no-farm')
+            ->assertSee('Belum Ada Farm')
+            ->assertSee('Buat Farm Baru');
     }
 }
 ```
@@ -226,7 +225,9 @@ class NoFarmEmptyStateTest extends TestCase
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `vendor/bin/sail artisan test --compact tests/Feature/Farm/NoFarmEmptyStateTest.php`
-Expected: FAIL — "Route [farm.no-farm] not defined" (view exists but has no route yet; we add a route to make it testable).
+Expected: FAIL — view `farm.no-farm` does not exist yet ("View [farm.no-farm] not found").
+
+Note: we do NOT add a `/farm/no-farm` route. A `GET /farm/no-farm` would collide with the existing wildcard route `GET /farm/{farm}` in `routes/farm.php` (registered earlier, order-based matching → model-binds `Farm` with `"no-farm"` → 404). The view is tested directly with `$this->view()`. Real users reach the empty state via the controller guards (Tasks 4-6).
 
 - [ ] **Step 3: Create the shared card partial**
 
@@ -286,29 +287,19 @@ In `resources/views/dashboard/index.blade.php`, replace the whole `@if (!$select
 
 Keep the rest of the `@elseif($tanks->isEmpty())` branch and the closing `@endif` untouched.
 
-- [ ] **Step 6: Add a test route for the page**
-
-In `routes/web.php`, after the `require` statements, add:
-
-```php
-Route::get('/farm/no-farm', function () {
-    return view('farm.no-farm');
-})->middleware(['auth', 'verified'])->name('farm.no-farm');
-```
-
-- [ ] **Step 7: Run tests to verify they pass**
+- [ ] **Step 6: Run tests to verify they pass**
 
 Run: `vendor/bin/sail artisan test --compact tests/Feature/Farm/NoFarmEmptyStateTest.php`
 Expected: PASS.
 
-- [ ] **Step 8: Run pint**
+- [ ] **Step 7: Run pint**
 
 Run: `vendor/bin/sail bin pint --dirty --format agent`
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add resources/views/partials/no-farm-card.blade.php resources/views/farm/no-farm.blade.php resources/views/dashboard/index.blade.php routes/web.php tests/Feature/Farm/NoFarmEmptyStateTest.php
+git add resources/views/partials/no-farm-card.blade.php resources/views/farm/no-farm.blade.php resources/views/dashboard/index.blade.php tests/Feature/Farm/NoFarmEmptyStateTest.php
 git commit -m "feat: view empty-state farm.no-farm reusable & refactor dashboard"
 ```
 
