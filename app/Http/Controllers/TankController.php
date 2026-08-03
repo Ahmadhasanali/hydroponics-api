@@ -13,10 +13,11 @@ class TankController extends Controller
 {
     public function index(Request $request): View
     {
-        $farmId = $request->session()->get('selected_farm_id');
-        $farm = Farm::with('tanks')->findOrFail($farmId);
+        if (! $this->hasFarm($request)) {
+            return view('farm.no-farm');
+        }
 
-        // TODO: add search/filter by tank name
+        $farm = $this->selectedFarm($request);
 
         return view('tank.index', [
             'farm' => $farm,
@@ -26,10 +27,12 @@ class TankController extends Controller
 
     public function create(Request $request): View
     {
-        $farmId = $request->session()->get('selected_farm_id');
+        if (! $this->hasFarm($request)) {
+            return view('farm.no-farm');
+        }
 
         return view('tank.create', [
-            'farmId' => $farmId,
+            'farmId' => $this->selectedFarm($request)->id,
         ]);
     }
 
@@ -46,7 +49,11 @@ class TankController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        $farmId = $request->session()->get('selected_farm_id');
+        if (! $this->hasFarm($request)) {
+            return redirect()->route('farm.create');
+        }
+
+        $farmId = $this->selectedFarm($request)->id;
 
         // Tank name must be unique within the same farm
         $exists = Tank::where('farm_id', $farmId)
