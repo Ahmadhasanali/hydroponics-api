@@ -21,7 +21,7 @@ class FarmPolicy
     {
         return $farm->users()
             ->where('user_id', $user->id)
-            ->wherePivot('role', 'owner')
+            ->wherePivotIn('role', ['owner', 'manager'])
             ->exists();
     }
 
@@ -31,5 +31,20 @@ class FarmPolicy
             ->where('user_id', $user->id)
             ->wherePivot('role', 'owner')
             ->exists();
+    }
+
+    public function manageMembers(User $user, Farm $farm): bool
+    {
+        return $this->update($user, $farm);
+    }
+
+    public function manageStaff(User $user, Farm $farm): bool
+    {
+        return $this->update($user, $farm);
+    }
+
+    public function transferOwnership(User $user, Farm $farm): bool
+    {
+        return $this->delete($user, $farm);
     }
 }
