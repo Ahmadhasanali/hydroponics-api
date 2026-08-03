@@ -36,7 +36,15 @@ class ActivityLogObserver
             $farmId = $entity->tank?->farm_id;
         }
 
-        if (! $farmId || ! auth()->id()) {
+        if (auth('staff')->check()) {
+            $userId = null;
+            $staffId = auth('staff')->id();
+        } else {
+            $userId = auth()->id();
+            $staffId = null;
+        }
+
+        if (! $farmId || (! $userId && ! $staffId)) {
             return;
         }
 
@@ -50,7 +58,8 @@ class ActivityLogObserver
 
         ActivityLog::create([
             'farm_id' => $farmId,
-            'user_id' => auth()->id(),
+            'user_id' => $userId,
+            'staff_id' => $staffId,
             'action' => $action,
             'entity_type' => $entityType,
             'entity_id' => $entity->id,
