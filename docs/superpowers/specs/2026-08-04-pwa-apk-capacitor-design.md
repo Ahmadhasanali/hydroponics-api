@@ -17,7 +17,8 @@ Tidak ada perubahan ke kode Laravel.
 **Tujuan:**
 1. APK bisa di-build di mesin development yang ada (Java 21 + Android SDK lengkap).
 2. APK memuat WebView penuh ke server — semua UI/auth/data dari server.
-3. Tidak ada kode Laravel yang berubah; hanya tambah file Capacitor + folder `android/`.
+3. Push notifikasi FCM native berfungsi di dalam APK (token Android → `push_subscriptions`).
+4. Tidak ada kode Laravel yang berubah; hanya tambah file Capacitor + folder `android/`.
 
 ## Keputusan Kunci
 
@@ -26,9 +27,10 @@ Tidak ada perubahan ke kode Laravel.
   Ganti server = edit config + `cap sync` (tanpa rebuild Gradle).
 - **WebView mode:** murni ke URL tanpa JS bridge (tidak pakai plugin Capacitor native
   di fase 1). App web berjalan persis seperti di browser.
-- **FCM native:** **deferred.** Struktur APK siap, tinggal tambah Android app di Firebase
-  console + `google-services.json` + `@capacitor/push-notifications` nanti.
-  Backend `PushNotificationService` tak berubah.
+- **FCM native:** **in scope.** `google-services.json` sudah ada (`package_name: com.hydrofarm.app`).
+  Pakai `@capacitor/push-notifications` + plugin Capacitor untuk mendaftarkan token Android.
+  Token Android masuk ke tabel `push_subscriptions` yang sama (backend `PushNotificationService`
+  tak berubah — token web dan Android dikirim lewat FCM HTTP v1 API yang sama).
 - **Keystore:** debug (`~/.android/debug.keystore`) — personal, sideload.
 - **Folder `android/`:** di-commit (kecuali output build), supaya `cap sync` + gradle cukup.
 - **Kode Laravel:** zero perubahan.
@@ -41,13 +43,15 @@ Tidak ada perubahan ke kode Laravel.
 - `npx cap add android` → generate folder `android/`
 - `npx cap sync` → salin `public/` ke `android/app/src/main/assets/public/`
 - Set `ANDROID_HOME` + `ANDROID_SDK_ROOT` environment
+- `google-services.json` → `android/app/` (FCM native)
+- `@capacitor/push-notifications` — registrasi token Android
+- `resources/js/capacitor-push.js` — bridge Capacitor → endpoint `POST/DELETE /push-subscriptions`
 - `./gradlew assembleDebug` → hasilkan `app-debug.apk`
 - `.gitignore`: exclude output Gradle build
 - Verifikasi APK terinstal via ADB
 - Commit semua file baru
 
 ### Out of Scope / Deferred
-- FCM native (`@capacitor/push-notifications` + `google-services.json`)
 - Keystore release + signing production
 - Splash screen / status bar native
 - Offline fallback / custom error page WebView
@@ -107,10 +111,14 @@ export default config;
 URL `https://hydroponic.ahmadhasan.my.id` adalah server produksi via Cloudflare Tunnel.
 APK memuat langsung dari URL tersebut — tidak ada file offline di dalam APK.
 
-### 2. WebView Behavior
+### 2. WebView Behavior + Capacitor Bridge
 
-Murni WebView ke URL server — **tanpa JS bridge** ke Capacitor plugins.
-Semua UI/CSS/JS dari server (Blade + Vite). Auth & session cookie Laravel jalan normal.
+WebView memuat URL server — semua UI/CSS/JS dari server (Blade + Vite).
+Auth & session cookie Laravel jalan normal.
+
+**Satu-satunya plugin Capacitor:** `@capacitor/push-notifications` untuk FCM native.
+Bridge di `resources/js/capacitor-push.js` hanya inisialisasi jika `window.Capacitor?.isNative`
+— tidak berdampak pada browser PWA.
 
 **Dev testing (tanpa server live — tidak diperlukan lagi):**
 
@@ -130,22 +138,77 @@ Dihasilkan oleh `npx cap add android`:
 - **Gradle 8.x** (bundled Capacitor)
 - **Keystore:** debug keystore `~/.android/debug.keystore` (password `android`)
 
-### 4. Struktur File
+### 4. FCM Native (Capacitor Push Notifications)
+
+Plugin `@capacitor/push-notifications` mendaftarkan token FCM Android, bukan token web.
+Flow:
+
+```
+APK diluncurkan
+      │
+      ▼
+capacitor-push.js: addListener('registration') → dapat token FCM Android
+      │
+      ▼
+POST /push-subscriptions { fcm_token, platform: 'android' }
+      │
+      ▼
+Token tersimpan di push_subscriptions (tabel sama dengan token web)
+      │
+      ▼
+Backend PushNotificationService::sendToUser() → FCM HTTP v1 API
+      │
+      ▼
+Notifikasi muncul di Android notification tray
+```
+
+**Perbedaan token web vs Android:**
+| Aspek | Token Web (PWA) | Token Android (APK) |
+|---|---|---|
+| Panjang | ~152 karakter | ~163 karakter |
+| Format | `d-xxx...` prefix | `f-xxx...` prefix |
+| Channel | Web Push API (SW) | FCM SDK native |
+| Delivery | SW background | Android notification tray |
+
+Keduanya tersimpan di tabel `push_subscriptions` yang sama dengan kolom `platform`
+(`'android'` vs `'web'`). Backend `PushNotificationService` tidak membedakan — semua
+token dikirim lewat FCM HTTP v1 API yang identik.
+
+**`resources/js/capacitor-push.js`:**
+- Import dari `@capacitor/push-notifications`
+- `PushNotifications.addListener('registration', ({ value }) => {...})` → dapat token
+- `PushNotifications.addListener('pushNotificationReceived', ({ notification }) => {...})` —
+  tangani notifikasi saat app terbuka (Android notification tray handle oleh OS)
+- Token dikirim ke `POST /push-subscriptions` (CSRF via `meta[name="csrf-token"]`)
+- Saat halaman logout: `DELETE /push-subscriptions` + `PushNotifications.unregister()`
+- Hanya diinisialisasi di dalam Capacitor native (deteksi `window.Capacitor?.isNative`),
+  tidak jalan di browser
+
+**Build:** `google-services.json` di `android/app/` → Gradle auto-detect dari plugin
+`com.google.gms.google-services` (ditambahkan ke `build.gradle` oleh Capacitor saat
+`cap add android` jika user punya `google-services.json`).
+
+### 5. Struktur File
 
 ```
 ├── capacitor.config.ts          ← di-commit
-├── package.json                 ← +@capacitor/core, @capacitor/cli, @capacitor/android
+├── google-services.json         ← di-commit (sudah ada)
+├── package.json                 ← +@capacitor/core, @capacitor/cli, @capacitor/android, @capacitor/push-notifications
 ├── android/                     ← di-commit (kecuali output build)
 │   ├── app/
+│   │   ├── google-services.json ← copy dari root (saat cap sync)
 │   │   ├── build.gradle
 │   │   ├── src/main/
 │   │   │   ├── AndroidManifest.xml
-│   │   │   ├── res/           ← icons Android native
-│   │   │   └── assets/public/ ← disalin dari public/ saat cap sync
+│   │   │   ├── res/
+│   │   │   └── assets/public/   ← disalin dari public/ saat cap sync
 │   ├── build.gradle
 │   ├── gradlew
 │   └── ...
 ├── public/                      ← sumber cap sync (manifest, icons, build/)
+├── resources/js/
+│   ├── capacitor-push.js        ← FCM native bridge
+│   └── app.js                   ← import capacitor-push.js
 ```
 
 **Exclude dari commit:** `android/.gradle/`, `android/build/`, `android/app/build/`,
@@ -155,7 +218,7 @@ Dihasilkan oleh `npx cap add android`:
 
 ```bash
 # 1. Install Capacitor
-npm install @capacitor/core @capacitor/cli @capacitor/android
+npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/push-notifications
 
 # 2. Init (sekali saja, jika belum ada android/)
 npx cap init "Hydro Farm" com.hydrofarm.app --web-dir=public
@@ -163,13 +226,16 @@ npx cap init "Hydro Farm" com.hydrofarm.app --web-dir=public
 # 3. Tambah platform Android
 npx cap add android
 
-# 4. Sync (salin assets ke android/app/src/main/assets/public/)
+# 4. Salin google-services.json ke android/app/
+cp google-services.json android/app/
+
+# 5. Sync (salin assets ke android/app/src/main/assets/public/)
 npx cap sync
 
-# 5. Build APK debug
+# 6. Build APK debug
 cd android && ./gradlew assembleDebug
 
-# 6. APK di:
+# 7. APK di:
 # android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
@@ -196,6 +262,8 @@ export ANDROID_SDK_ROOT=$ANDROID_HOME
 | **Build verification** | `./gradlew assembleDebug` sukses → APK di output dir |
 | **Capacitor sync** | Verifikasi `android/app/src/main/assets/public/` berisi file dari `public/` |
 | **Manifest validation** | `manifest.webmanifest` ter-copy; icon tersedia |
+| **google-services.json** | Tersalin ke `android/app/`; plugin `google-services` aktif di `build.gradle` |
+| **Manual test FCM** | Install APK → login → izin notif muncul → token tersimpan di `push_subscriptions` |
 | **Manual test** | `adb install app-debug.apk` → app terbuka dan menampilkan halaman login server |
 | **Regresi Laravel** | `./vendor/bin/sail artisan test --compact` tetap PASS — nol perubahan di Laravel |
 
@@ -214,6 +282,7 @@ export ANDROID_SDK_ROOT=$ANDROID_HOME
 | `@capacitor/core` | dependencies | ^7.x |
 | `@capacitor/cli` | devDependencies | ^7.x |
 | `@capacitor/android` | devDependencies | ^7.x |
+| `@capacitor/push-notifications` | dependencies | ^7.x |
 
 ## Risiko / Catatan
 
@@ -223,5 +292,11 @@ export ANDROID_SDK_ROOT=$ANDROID_HOME
   build-tools dan platform (35) terinstal di SDK manager.
 - **Capacitor v7** — verifikasi versi terbaru saat instal; v7 adalah target.
 - **WebView vs Chrome:** WebView di APK tidak mendukung Web Push API seperti browser
-  — FCM web tidak jalan di dalam APK. FCM native diperlukan untuk push notifikasi dalam APK
-  (deferred).
+  — FCM web tidak jalan di dalam APK. Solusi: FCM native via `@capacitor/push-notifications`.
+- **google-services.json** berisi API key (`AIzaSy...`) — file ini aman di-commit karena
+  API key Android di Firebase dibatasi oleh package name + SHA-1 fingerprint (hanya APK
+  yang ditandatangani dengan keystore yang sesuai yang bisa pakai key ini).
+- **Notifikasi saat app terbuka:** `pushNotificationReceived` listener menampilkan
+  notifikasi in-app; jika app di-background, OS Android menampilkan di notification tray.
+- **User bisa punya 2 token:** satu dari browser (PWA) + satu dari APK — `sendToUser`
+  mengirim ke semua token user, keduanya dapat notifikasi.
