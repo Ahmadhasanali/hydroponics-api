@@ -1,5 +1,6 @@
 import { registerSW } from 'virtual:pwa-register';
 import './firebase';
+import './capacitor-push';
 
 registerSW({ immediate: true });
 
