@@ -6,81 +6,58 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Farm\StoreFarmRequest;
 use App\Http\Requests\Farm\UpdateFarmRequest;
 use App\Models\Farm;
-use Illuminate\Contracts\View\View;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class FarmController extends Controller
 {
-    public function index(): View
+    public function index(): JsonResponse
     {
-        $user = auth()->user();
-        $farms = $user->farms()->withCount('tanks')->get();
-        // TODO: set selected farm in session if not set yet
-        // $selectedFarm = $farms->first();
-        // if ($selectedFarm) session(['selected_farm_id' => $selectedFarm->id]);
+        $farms = auth()->user()->farms()->withCount('tanks')->get();
 
-        return view('farm.index', compact('farms'));
+        return $this->successResponse(['farms' => $farms]);
     }
 
-    public function create(): View
-    {
-        return view('farm.create');
-    }
-
-    public function store(StoreFarmRequest $request): RedirectResponse
+    public function store(StoreFarmRequest $request): JsonResponse
     {
         $farm = Farm::query()->create(
             $request->validated() + ['created_by' => $request->user()->id]
         );
         $farm->users()->attach($request->user()->id, ['role' => 'owner']);
-        $request->session()->put('selected_farm_id', $farm->id);
 
-        return redirect()->route('farm.index')
-            ->with('success', 'Farm berhasil ditambahkan.');
+        return $this->successResponse(['farm' => $farm], 'Farm berhasil ditambahkan.', 201);
     }
 
-    public function show(Farm $farm): View
+    public function show(Farm $farm): JsonResponse
     {
         $farm->load(['tanks', 'users']);
 
-        return view('farm.show', compact('farm'));
+        return $this->successResponse(['farm' => $farm]);
     }
 
-    public function edit(Farm $farm): View
-    {
-        return view('farm.edit', compact('farm'));
-    }
-
-    public function update(UpdateFarmRequest $request, Farm $farm): RedirectResponse
+    public function update(UpdateFarmRequest $request, Farm $farm): JsonResponse
     {
         Gate::authorize('update', $farm);
 
         $farm->update($request->validated());
 
-        return redirect()->route('farm.index')
-            ->with('success', 'Farm berhasil diperbarui.');
+        return $this->successResponse(['farm' => $farm], 'Farm berhasil diperbarui.');
     }
 
-    public function destroy(Farm $farm): RedirectResponse
+    public function destroy(Farm $farm): JsonResponse
     {
         Gate::authorize('delete', $farm);
 
         $farm->tanks()->each(fn ($tank) => $tank->delete());
-
         $farm->activityLogs()->delete();
-
         $farm->delete();
 
-        session()->forget('selected_farm_id');
-
-        return redirect()->route('farm.index')
-            ->with('success', 'Farm berhasil dihapus.');
+        return $this->successResponse(null, 'Farm berhasil dihapus.');
     }
 
-    public function transferOwnership(Request $request, Farm $farm): RedirectResponse
+    public function transferOwnership(Request $request, Farm $farm): JsonResponse
     {
         Gate::authorize('transferOwnership', $farm);
 
@@ -91,7 +68,9 @@ class FarmController extends Controller
         $newOwner = $farm->users()->findOrFail($validated['new_owner_id']);
 
         if ($newOwner->id === $request->user()->id) {
-            return back()->withErrors(['new_owner_id' => 'Anda tidak dapat mentransfer kepemilikan ke diri sendiri.']);
+            return $this->errorResponse('Anda tidak dapat mentransfer kepemilikan ke diri sendiri.', 422, [
+                'new_owner_id' => ['Anda tidak dapat mentransfer kepemilikan ke diri sendiri.'],
+            ]);
         }
 
         DB::transaction(function () use ($farm, $newOwner, $request) {
@@ -99,7 +78,6 @@ class FarmController extends Controller
             $farm->users()->updateExistingPivot($request->user()->id, ['role' => 'manager']);
         });
 
-        return redirect()->route('farm.show', $farm)
-            ->with('success', 'Kepemilikan kebun berhasil ditransfer.');
+        return $this->successResponse(['farm' => $farm], 'Kepemilikan kebun berhasil ditransfer.');
     }
 }

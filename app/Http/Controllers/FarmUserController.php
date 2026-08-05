@@ -6,16 +6,15 @@ use App\Http\Requests\StoreFarmUserRequest;
 use App\Models\Farm;
 use App\Models\Farm\FarmUser;
 use App\Models\User;
-use Illuminate\Contracts\View\View;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 class FarmUserController extends Controller
 {
-    public function index(Request $request, Farm $farm): View
+    public function index(Request $request, Farm $farm): JsonResponse
     {
-        $this->authorize('view', $farm);
+        Gate::authorize('view', $farm);
 
         $farm->load([
             'users' => function ($query) {
@@ -24,57 +23,56 @@ class FarmUserController extends Controller
             'staff',
         ]);
 
-        return view('farm-members.index', compact('farm'));
+        return $this->successResponse(['farm' => $farm]);
     }
 
-    public function create(Request $request, Farm $farm): View
-    {
-        $this->authorize('update', $farm);
-
-        return view('farm-members.create', compact('farm'));
-    }
-
-    public function store(StoreFarmUserRequest $request, Farm $farm): RedirectResponse
+    public function store(StoreFarmUserRequest $request, Farm $farm): JsonResponse
     {
         $validated = $request->validated();
 
         $user = User::where('name', $validated['email'])->first();
 
         if (! $user) {
-            return back()->withErrors(['email' => 'User dengan email tersebut tidak ditemukan.'])
-                ->withInput();
+            return $this->errorResponse('User dengan email tersebut tidak ditemukan.', 422, [
+                'email' => ['User dengan email tersebut tidak ditemukan.'],
+            ]);
         }
 
         if ($farm->users()->where('user_id', $user->id)->exists()) {
-            return back()->withErrors(['email' => 'User tersebut sudah menjadi anggota farm.'])
-                ->withInput();
+            return $this->errorResponse('User tersebut sudah menjadi anggota farm.', 422, [
+                'email' => ['User tersebut sudah menjadi anggota farm.'],
+            ]);
         }
 
         $farm->users()->attach($user->id, ['role' => 'manager']);
 
-        return redirect()->route('farm.members.index', $farm)
-            ->with('success', 'Anggota berhasil ditambahkan.');
+        return $this->successResponse(['member' => $user->fresh()], 'Anggota berhasil ditambahkan.', 201);
     }
 
-    public function destroy(Request $request, Farm $farm, FarmUser $farmUser): RedirectResponse
+    public function destroy(Request $request, Farm $farm, FarmUser $farmUser): JsonResponse
     {
         Gate::authorize('manageMembers', $farm);
 
         if ($farmUser->farm_id !== $farm->id) {
-            return back()->withErrors(['error' => 'Anggota tidak ditemukan.']);
+            return $this->errorResponse('Anggota tidak ditemukan.', 404, [
+                'error' => ['Anggota tidak ditemukan.'],
+            ]);
         }
 
         if ($farmUser->role === 'owner') {
-            return back()->withErrors(['error' => 'Pemilik kebun tidak dapat dihapus.']);
+            return $this->errorResponse('Pemilik kebun tidak dapat dihapus.', 422, [
+                'error' => ['Pemilik kebun tidak dapat dihapus.'],
+            ]);
         }
 
         if ($farmUser->user_id === $request->user()->id) {
-            return back()->withErrors(['error' => 'Anda tidak dapat menghapus diri sendiri.']);
+            return $this->errorResponse('Anda tidak dapat menghapus diri sendiri.', 422, [
+                'error' => ['Anda tidak dapat menghapus diri sendiri.'],
+            ]);
         }
 
         $farmUser->delete();
 
-        return redirect()->route('farm.members.index', $farm)
-            ->with('success', 'Anggota berhasil dihapus.');
+        return $this->successResponse(null, 'Anggota berhasil dihapus.');
     }
 }
