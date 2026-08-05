@@ -1,0 +1,35 @@
+# Dependencies (built inside the image)
+vendor/
+node_modules/
+
+# Environment & secrets — never ship into the image
+.env
+.env.*
+!.env.example
+
+# VCS / CI
+.git/
+.github/
+
+# Tests & docs
+tests/
+docs/
+documents/
+scripts/
+*.md
+
+# Laravel runtime artifacts
+storage/*
+!storage/app
+!storage/framework
+!storage/logs
+public/build/
+public/hot
+public/storage
+*.key
+.phpunit.result.cache
+
+# Compose files (not needed in image)
+compose*.yaml
+compose*.yml
+.dockerignore

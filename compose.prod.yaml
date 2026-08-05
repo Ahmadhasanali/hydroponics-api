@@ -1,0 +1,30 @@
+services:
+    hydroponic:
+        build:
+            context: .
+            dockerfile: docker/Dockerfile.prod
+            args:
+                WWWGROUP: "${WWWGROUP:-1000}"
+                WWWUSER: "${WWWUSER:-1000}"
+        image: hydroponic-app:latest
+        restart: unless-stopped
+        env_file:
+            - .env.production
+        expose:
+            - "80"
+        networks:
+            - pgsql_default
+            - traefik-public
+        labels:
+            - "traefik.enable=true"
+            - "traefik.http.routers.hydroponic.rule=Host(`hydroponic.ahmadhasan.my.id`)"
+            - "traefik.http.routers.hydroponic.entrypoints=web"
+            - "traefik.http.routers.hydroponic.middlewares=rate-limit@file"
+            - "traefik.http.services.hydroponic.loadbalancer.server.port=80"
+            - "traefik.docker.network=traefik-public"
+
+networks:
+    pgsql_default:
+        external: true
+    traefik-public:
+        external: true
