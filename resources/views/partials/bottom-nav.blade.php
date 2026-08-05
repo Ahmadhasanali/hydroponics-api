@@ -1,6 +1,6 @@
 @auth
     <nav id="bottomNav"
-        class="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_12px_rgba(0,0,0,0.05)] backdrop-blur-xl lg:hidden">
+        class="fixed inset-x-0 bottom-0 z-40 grid border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_12px_rgba(0,0,0,0.05)] backdrop-blur-xl lg:hidden {{ $hasFarm ? 'grid-cols-4' : 'grid-cols-3' }}">
         <a href="{{ route('dashboard') }}"
             class="flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold {{ request()->routeIs('dashboard') ? 'text-[#d4a020]' : 'text-slate-500' }}">
             <i class="bi {{ request()->routeIs('dashboard') ? 'bi-grid-1x2-fill' : 'bi-grid-1x2' }} text-xl"></i>
