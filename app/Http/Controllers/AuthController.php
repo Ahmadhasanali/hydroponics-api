@@ -3,52 +3,52 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Auth\LoginRequest;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\View\View;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    /**
-     * Show the login form.
-     */
-    public function showLoginForm(): View
-    {
-        return view('auth.login');
-    }
-
-    /**
-     * Handle an authentication attempt.
-     */
-    public function login(LoginRequest $request): RedirectResponse
+    public function login(LoginRequest $request): JsonResponse
     {
         $credentials = [
             'email' => $request->string('email')->toString(),
             'password' => $request->string('password')->toString(),
         ];
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
-            return back()
-                ->withInput($request->only('email', 'remember'))
-                ->withErrors(['email' => __('Email atau password salah.')]);
+        if (! Auth::attempt($credentials)) {
+            throw ValidationException::withMessages([
+                'email' => ['Email atau password salah.'],
+            ]);
         }
 
-        $request->session()->regenerate();
+        $user = Auth::user();
 
-        return redirect()->intended(route('dashboard'));
+        if (! $user->hasVerifiedEmail()) {
+            Auth::logout();
+            return $this->errorResponse('Email belum diverifikasi. Silakan cek inbox Anda.', 403);
+        }
+
+        $token = $user->createToken('api-token')->plainTextToken;
+
+        return $this->successResponse([
+            'user' => $user,
+            'token' => $token,
+        ], 'Login berhasil.');
     }
 
-    /**
-     * Log the user out of the application.
-     */
-    public function logout(Request $request): RedirectResponse
+    public function logout(Request $request): JsonResponse
     {
-        Auth::logout();
+        $request->user()->currentAccessToken()->delete();
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        return $this->successResponse(null, 'Logout berhasil.');
+    }
 
-        return redirect()->route('login');
+    public function user(Request $request): JsonResponse
+    {
+        $user = $request->user()->load('farms');
+
+        return $this->successResponse(['user' => $user]);
     }
 }

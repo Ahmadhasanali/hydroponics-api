@@ -2,38 +2,35 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\Auth\RegisterRequest;
 use App\Models\User;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\View\View;
+use Illuminate\Validation\Rules\Password;
 
 class RegistrationController extends Controller
 {
-    /**
-     * Show the registration form.
-     */
-    public function showRegisterForm(): View
+    public function register(Request $request): JsonResponse
     {
-        return view('auth.register');
-    }
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ]);
 
-    /**
-     * Handle an incoming registration request.
-     */
-    public function register(RegisterRequest $request): RedirectResponse
-    {
-        $user = User::query()->create([
-            'name' => $request->string('name')->toString(),
-            'email' => $request->string('email')->toString(),
-            'password' => Hash::make($request->string('password')->toString()),
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
         ]);
 
         $user->sendEmailVerificationNotification();
 
-        Auth::login($user);
+        $token = $user->createToken('api-token')->plainTextToken;
 
-        return redirect()->route('verification.notice');
+        return $this->successResponse([
+            'user' => $user,
+            'token' => $token,
+        ], 'Registrasi berhasil. Silakan cek email untuk verifikasi.', 201);
     }
 }
