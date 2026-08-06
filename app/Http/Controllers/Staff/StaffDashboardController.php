@@ -3,18 +3,21 @@
 namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
-use Illuminate\View\View;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class StaffDashboardController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): JsonResponse
     {
-        $farm = auth('staff')->user()->farm->load('tanks');
+        $staff = $request->user();
+        $farm = $staff->farm()->with('tanks')->first();
 
         $tanks = $farm->tanks;
         $avgPpm = $tanks->avg('current_ppm');
         $avgPh = $tanks->avg('current_ph');
         $avgTemp = $tanks->avg('current_water_temperature');
+
         $stats = [
             'total_tanks' => $tanks->count(),
             'active_tanks' => $tanks->where('is_active', true)->count(),
@@ -23,6 +26,10 @@ class StaffDashboardController extends Controller
             'avg_temp' => $avgTemp !== null ? round($avgTemp, 1) : null,
         ];
 
-        return view('staff.dashboard.index', compact('farm', 'stats'));
+        return $this->successResponse([
+            'farm' => $farm,
+            'tanks' => $tanks,
+            'stats' => $stats,
+        ]);
     }
 }

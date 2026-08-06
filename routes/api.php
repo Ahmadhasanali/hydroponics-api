@@ -19,6 +19,7 @@ use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Staff\StaffAuthController;
+use App\Http\Controllers\Staff\StaffDashboardController;
 use App\Http\Controllers\TankController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,7 +45,6 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         // Auth
         Route::post('logout', [AuthController::class, 'logout']);
-        Route::post('staff/logout', [StaffAuthController::class, 'logout']);
         Route::get('user', [AuthController::class, 'user']);
         Route::put('user', [ProfileController::class, 'update']);
         Route::post('email/resend-verification', [EmailVerificationController::class, 'send'])
@@ -99,5 +99,11 @@ Route::prefix('v1')->group(function () {
 
         // Reminders
         Route::apiResource('reminders', ReminderController::class);
+    });
+
+    // Staff (authenticated)
+    Route::middleware(['auth:sanctum', 'staff'])->group(function () {
+        Route::post('staff/logout', [StaffAuthController::class, 'logout']);
+        Route::get('staff/dashboard', [StaffDashboardController::class, 'index']);
     });
 });
