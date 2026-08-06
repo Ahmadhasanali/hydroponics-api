@@ -5,28 +5,13 @@ namespace App\Http\Controllers\Staff;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Staff\StaffLoginRequest;
 use App\Models\Farm;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\View\View;
 
 class StaffAuthController extends Controller
 {
-    public function showLoginForm(): View|RedirectResponse
-    {
-        if (Auth::guard('staff')->check()) {
-            return redirect()->route('staff.dashboard');
-        }
-
-        if (Auth::guard('web')->check()) {
-            return redirect()->route('dashboard');
-        }
-
-        return view('staff.auth.login');
-    }
-
-    public function login(StaffLoginRequest $request): RedirectResponse
+    public function login(StaffLoginRequest $request): JsonResponse
     {
         $validated = $request->validated();
 
@@ -34,29 +19,25 @@ class StaffAuthController extends Controller
         $staff = $farm?->staff()->where('username', $validated['username'])->first();
 
         if (! $staff || ! Hash::check($validated['password'], $staff->password)) {
-            return back()
-                ->withInput($request->only('farm_name', 'username'))
-                ->withErrors(['farm_name' => 'Nama kebun, username, atau password salah.']);
+            return $this->errorResponse('Nama kebun, username, atau password salah.', 401);
         }
 
         if (! $staff->is_active) {
-            return back()
-                ->withInput($request->only('farm_name', 'username'))
-                ->withErrors(['farm_name' => 'Akun tidak aktif. Hubungi pemilik kebun.']);
+            return $this->errorResponse('Akun tidak aktif. Hubungi pemilik kebun.', 403);
         }
 
-        Auth::guard('staff')->login($staff);
-        $request->session()->regenerate();
+        $token = $staff->createToken('staff-token', ['staff'])->plainTextToken;
 
-        return redirect()->route('staff.dashboard');
+        return $this->successResponse([
+            'token' => $token,
+            'staff' => $staff,
+        ], 'Login berhasil.');
     }
 
-    public function logout(Request $request): RedirectResponse
+    public function logout(Request $request): JsonResponse
     {
-        Auth::guard('staff')->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        $request->user()->currentAccessToken()->delete();
 
-        return redirect()->route('staff.login');
+        return $this->successResponse(null, 'Logout berhasil.');
     }
 }
