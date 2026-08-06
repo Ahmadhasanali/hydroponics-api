@@ -22,6 +22,7 @@ use App\Http\Controllers\Staff\StaffAuthController;
 use App\Http\Controllers\Staff\StaffDashboardController;
 use App\Http\Controllers\Staff\StaffMonitoringController;
 use App\Http\Controllers\Staff\StaffNutrientAdditionController;
+use App\Http\Controllers\Staff\StaffPhDownController;
 use App\Http\Controllers\TankController;
 use Illuminate\Support\Facades\Route;
 
@@ -119,5 +120,12 @@ Route::prefix('v1')->group(function () {
         Route::get('staff/nutrients/{nutrientAddition}', [StaffNutrientAdditionController::class, 'show']);
         Route::patch('staff/nutrients/{nutrientAddition}', [StaffNutrientAdditionController::class, 'update']);
         Route::delete('staff/nutrients/{nutrientAddition}', [StaffNutrientAdditionController::class, 'destroy']);
+
+        // pH Down
+        Route::get('staff/ph-down', [StaffPhDownController::class, 'index']);
+        Route::post('staff/ph-down', [StaffPhDownController::class, 'store']);
+        Route::get('staff/ph-down/{phDownLog}', [StaffPhDownController::class, 'show']);
+        Route::patch('staff/ph-down/{phDownLog}', [StaffPhDownController::class, 'update']);
+        Route::delete('staff/ph-down/{phDownLog}', [StaffPhDownController::class, 'destroy']);
     });
 });

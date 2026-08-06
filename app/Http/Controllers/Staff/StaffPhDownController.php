@@ -6,38 +6,39 @@ use App\Http\Controllers\Controller;
 use App\Models\Farm\PhDownLog;
 use App\Models\Farm\Staff;
 use App\Models\Farm\Tank;
-use Illuminate\Contracts\View\View;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class StaffPhDownController extends Controller
 {
     private function staff(): Staff
     {
-        return auth('staff')->user();
+        return request()->user();
     }
 
-    private function farmTanks()
+    private function farmTankIds()
     {
-        return Tank::where('farm_id', $this->staff()->farm_id)->orderBy('name')->get();
+        return Tank::where('farm_id', $this->staff()->farm_id)->pluck('id');
     }
 
-    public function index(): View
+    public function index(): JsonResponse
     {
         $logs = PhDownLog::where('staff_id', $this->staff()->id)
             ->with('tank')
             ->latest('log_date')
             ->paginate(20);
 
-        return view('staff.ph-down.index', compact('logs'));
+        return $this->paginatedResponse($logs);
     }
 
-    public function create(): View
+    public function show(PhDownLog $phDownLog): JsonResponse
     {
-        return view('staff.ph-down.create', ['tanks' => $this->farmTanks()]);
+        abort_unless($phDownLog->staff_id === $this->staff()->id, 403);
+
+        return $this->successResponse(['ph_down_log' => $phDownLog->load('tank')]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'tank_id' => 'required|exists:tanks,id',
@@ -48,34 +49,17 @@ class StaffPhDownController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        $tank = Tank::where('id', $validated['tank_id'])
-            ->where('farm_id', $this->staff()->farm_id)
-            ->first();
+        abort_unless($this->farmTankIds()->contains($validated['tank_id']), 403);
 
-        if (! $tank) {
-            abort(403);
-        }
-
-        PhDownLog::create($validated + [
+        $phDownLog = PhDownLog::create($validated + [
             'staff_id' => $this->staff()->id,
             'user_id' => null,
         ]);
 
-        return redirect()->route('staff.ph-down.index')
-            ->with('success', 'Data pH Down berhasil disimpan.');
+        return $this->successResponse(['ph_down_log' => $phDownLog], 'Data pH Down berhasil disimpan.', 201);
     }
 
-    public function edit(PhDownLog $phDownLog): View
-    {
-        abort_unless($phDownLog->staff_id === $this->staff()->id, 403);
-
-        return view('staff.ph-down.edit', [
-            'phDownLog' => $phDownLog,
-            'tanks' => $this->farmTanks(),
-        ]);
-    }
-
-    public function update(Request $request, PhDownLog $phDownLog): RedirectResponse
+    public function update(Request $request, PhDownLog $phDownLog): JsonResponse
     {
         abort_unless($phDownLog->staff_id === $this->staff()->id, 403);
 
@@ -88,27 +72,19 @@ class StaffPhDownController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        $tank = Tank::where('id', $validated['tank_id'])
-            ->where('farm_id', $this->staff()->farm_id)
-            ->first();
-
-        if (! $tank) {
-            abort(403);
-        }
+        abort_unless($this->farmTankIds()->contains($validated['tank_id']), 403);
 
         $phDownLog->update($validated);
 
-        return redirect()->route('staff.ph-down.index')
-            ->with('success', 'Data pH Down berhasil diperbarui.');
+        return $this->successResponse(['ph_down_log' => $phDownLog], 'Data pH Down berhasil diperbarui.');
     }
 
-    public function destroy(PhDownLog $phDownLog): RedirectResponse
+    public function destroy(PhDownLog $phDownLog): JsonResponse
     {
         abort_unless($phDownLog->staff_id === $this->staff()->id, 403);
 
         $phDownLog->delete();
 
-        return redirect()->route('staff.ph-down.index')
-            ->with('success', 'Data pH Down berhasil dihapus.');
+        return $this->successResponse(null, 'Data pH Down berhasil dihapus.');
     }
 }
