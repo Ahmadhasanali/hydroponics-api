@@ -9,8 +9,7 @@ use App\Models\Reminder\ReminderOccurrence;
 use App\Models\Reminder\ReminderTarget;
 use App\Services\ReminderRecurrenceService;
 use App\Services\ReminderTargetResolver;
-use Illuminate\Contracts\View\View;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +21,7 @@ class StaffReminderController extends Controller
         private readonly ReminderRecurrenceService $recurrence,
     ) {}
 
-    public function index(Request $request): View
+    public function index(Request $request): JsonResponse
     {
         $staff = $request->user();
         $visibleIds = $this->resolver->visibleReminderIds($staff);
@@ -32,29 +31,12 @@ class StaffReminderController extends Controller
             ->whereIn('id', $visibleIds)
             ->with('targets.targetable')
             ->orderByDesc('starts_at')
-            ->get();
+            ->paginate(20);
 
-        return view('staff.reminders.index', compact('reminders'));
+        return $this->paginatedResponse($reminders);
     }
 
-    public function create(Request $request): View
-    {
-        $staff = $request->user();
-        $farm = $staff->farm;
-        $farm->load('staff');
-
-        $eligible = [];
-
-        foreach ($farm->staff as $candidate) {
-            if ($this->resolver->canTarget($staff, $farm, $candidate)) {
-                $eligible[] = ['id' => $candidate::class.':'.$candidate->id, 'name' => $candidate->name];
-            }
-        }
-
-        return view('staff.reminders.create', compact('eligible'));
-    }
-
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): JsonResponse
     {
         $staff = $request->user();
         $farm = $staff->farm;
@@ -84,10 +66,12 @@ class StaffReminderController extends Controller
         );
 
         if ($targets === []) {
-            return back()->withErrors(['target_mode' => 'Tidak ada target yang valid.'])->withInput();
+            return $this->errorResponse('Tidak ada target yang valid.', 422, [
+                'target_mode' => ['Tidak ada target yang valid.'],
+            ]);
         }
 
-        DB::transaction(function () use ($request, $farm, $validated, $targets) {
+        $reminder = DB::transaction(function () use ($request, $farm, $validated, $targets) {
             $reminder = Reminder::query()->create([
                 'farm_id' => $farm->id,
                 'created_by_type' => Staff::class,
@@ -116,13 +100,33 @@ class StaffReminderController extends Controller
                     ? $startsAt->copy()->subMinutes($validated['advance_notify_minutes'])
                     : null,
             ]);
+
+            return $reminder;
         });
 
-        return redirect()->route('staff.reminders.index')
-            ->with('success', 'Reminder berhasil dibuat.');
+        return $this->successResponse(
+            ['reminder' => $reminder->load('targets.targetable')],
+            'Reminder berhasil dibuat.',
+            201,
+        );
     }
 
-    public function calendar(Request $request): View
+    public function destroy(Request $request, Reminder $reminder): JsonResponse
+    {
+        $staff = $request->user();
+
+        if ($reminder->farm_id !== $staff->farm_id
+            || $reminder->created_by_type !== Staff::class
+            || $reminder->created_by_id !== $staff->id) {
+            return $this->errorResponse('Reminder tidak ditemukan.', 403);
+        }
+
+        $reminder->delete();
+
+        return $this->successResponse(null, 'Reminder berhasil dihapus.');
+    }
+
+    public function calendar(Request $request): JsonResponse
     {
         $staff = $request->user();
         $month = $request->input('month', now()->format('Y-m'));
@@ -154,7 +158,6 @@ class StaffReminderController extends Controller
             );
         }
 
-        // Gabungkan, buang duplikat (yang sudah tersimpan), lalu group per tanggal
         $storedKeys = $stored->map(fn ($o) => $o->reminder_id.'|'.$o->scheduled_at->format('Y-m-d H:i'));
 
         $byDate = $stored
@@ -163,15 +166,18 @@ class StaffReminderController extends Controller
             )))
             ->groupBy(fn ($item) => $item->scheduled_at->format('Y-m-d'));
 
-        return view('staff.reminders.calendar', compact('byDate', 'start', 'month'));
+        return $this->successResponse([
+            'month' => $month,
+            'by_date' => $byDate->map(fn ($items) => $items->values()),
+        ]);
     }
 
-    public function occurrenceDone(Request $request, ReminderOccurrence $occurrence): RedirectResponse
+    public function occurrenceDone(Request $request, ReminderOccurrence $occurrence): JsonResponse
     {
         $staff = $request->user();
 
         if ($occurrence->reminder->farm_id !== $staff->farm_id) {
-            abort(403);
+            return $this->errorResponse('Reminder tidak ditemukan.', 403);
         }
 
         $canComplete = $occurrence->reminder->created_by_type === Staff::class
@@ -185,20 +191,20 @@ class StaffReminderController extends Controller
         }
 
         if (! $canComplete) {
-            abort(403);
+            return $this->errorResponse('Reminder tidak ditemukan.', 403);
         }
 
         $occurrence->markDone(Staff::class, $staff->id);
 
-        return back()->with('success', 'Reminder ditandai selesai.');
+        return $this->successResponse(null, 'Reminder ditandai selesai.');
     }
 
-    public function occurrenceSkip(Request $request, ReminderOccurrence $occurrence): RedirectResponse
+    public function occurrenceSkip(Request $request, ReminderOccurrence $occurrence): JsonResponse
     {
         $staff = $request->user();
 
         if ($occurrence->reminder->farm_id !== $staff->farm_id) {
-            abort(403);
+            return $this->errorResponse('Reminder tidak ditemukan.', 403);
         }
 
         $canSkip = $occurrence->reminder->created_by_type === Staff::class
@@ -212,27 +218,11 @@ class StaffReminderController extends Controller
         }
 
         if (! $canSkip) {
-            abort(403);
+            return $this->errorResponse('Reminder tidak ditemukan.', 403);
         }
 
         $occurrence->markSkipped();
 
-        return back()->with('success', 'Reminder dilewati.');
-    }
-
-    public function destroy(Request $request, Reminder $reminder): RedirectResponse
-    {
-        $staff = $request->user();
-
-        if ($reminder->farm_id !== $staff->farm_id
-            || $reminder->created_by_type !== Staff::class
-            || $reminder->created_by_id !== $staff->id) {
-            abort(403);
-        }
-
-        $reminder->delete();
-
-        return redirect()->route('staff.reminders.index')
-            ->with('success', 'Reminder berhasil dihapus.');
+        return $this->successResponse(null, 'Reminder dilewati.');
     }
 }

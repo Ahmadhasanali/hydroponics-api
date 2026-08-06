@@ -23,6 +23,7 @@ use App\Http\Controllers\Staff\StaffDashboardController;
 use App\Http\Controllers\Staff\StaffMonitoringController;
 use App\Http\Controllers\Staff\StaffNutrientAdditionController;
 use App\Http\Controllers\Staff\StaffPhDownController;
+use App\Http\Controllers\Staff\StaffReminderController;
 use App\Http\Controllers\TankController;
 use Illuminate\Support\Facades\Route;
 
@@ -127,5 +128,13 @@ Route::prefix('v1')->group(function () {
         Route::get('staff/ph-down/{phDownLog}', [StaffPhDownController::class, 'show']);
         Route::patch('staff/ph-down/{phDownLog}', [StaffPhDownController::class, 'update']);
         Route::delete('staff/ph-down/{phDownLog}', [StaffPhDownController::class, 'destroy']);
+
+        // Reminders
+        Route::get('staff/reminders', [StaffReminderController::class, 'index']);
+        Route::post('staff/reminders', [StaffReminderController::class, 'store']);
+        Route::delete('staff/reminders/{reminder}', [StaffReminderController::class, 'destroy']);
+        Route::get('staff/reminders/calendar', [StaffReminderController::class, 'calendar']);
+        Route::post('staff/reminders/occurrences/{occurrence}/done', [StaffReminderController::class, 'occurrenceDone']);
+        Route::post('staff/reminders/occurrences/{occurrence}/skip', [StaffReminderController::class, 'occurrenceSkip']);
     });
 });
