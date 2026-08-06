@@ -6,38 +6,57 @@ use App\Http\Controllers\Controller;
 use App\Models\Farm\DailyMonitoring;
 use App\Models\Farm\Staff;
 use App\Models\Farm\Tank;
-use Illuminate\Contracts\View\View;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class StaffMonitoringController extends Controller
 {
     private function staff(): Staff
     {
-        return auth('staff')->user();
+        return request()->user();
     }
 
-    private function farmTanks()
+    private function farmTankIds()
     {
-        return Tank::where('farm_id', $this->staff()->farm_id)->orderBy('name')->get();
+        return Tank::where('farm_id', $this->staff()->farm_id)->pluck('id');
     }
 
-    public function index(): View
+    private function monitoringPayload(DailyMonitoring $monitoring): array
+    {
+        $data = $monitoring->toArray();
+        $data['ppm'] = (int) $data['ppm'];
+        $data['ph'] = (float) $data['ph'];
+        $data['water_temperature'] = $data['water_temperature'] === null ? null : (float) $data['water_temperature'];
+
+        return $data;
+    }
+
+    public function index(): JsonResponse
     {
         $monitorings = DailyMonitoring::where('staff_id', $this->staff()->id)
             ->with('tank')
             ->latest('log_date')
             ->paginate(20);
 
-        return view('staff.monitoring.index', compact('monitorings'));
+        return $this->successResponse([
+            'data' => $monitorings->items(),
+            'meta' => [
+                'current_page' => $monitorings->currentPage(),
+                'last_page' => $monitorings->lastPage(),
+                'per_page' => $monitorings->perPage(),
+                'total' => $monitorings->total(),
+            ],
+        ]);
     }
 
-    public function create(): View
+    public function show(DailyMonitoring $dailyMonitoring): JsonResponse
     {
-        return view('staff.monitoring.create', ['tanks' => $this->farmTanks()]);
+        abort_unless($dailyMonitoring->staff_id === $this->staff()->id, 403);
+
+        return $this->successResponse(['monitoring' => $this->monitoringPayload($dailyMonitoring->load('tank'))]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'tank_id' => 'required|exists:tanks,id',
@@ -48,44 +67,29 @@ class StaffMonitoringController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        $tank = Tank::where('id', $validated['tank_id'])
-            ->where('farm_id', $this->staff()->farm_id)
-            ->first();
-
-        if (! $tank) {
-            abort(403);
-        }
+        abort_unless($this->farmTankIds()->contains($validated['tank_id']), 403);
 
         $exists = DailyMonitoring::where('tank_id', $validated['tank_id'])
             ->where('log_date', $validated['log_date'])
             ->exists();
 
         if ($exists) {
-            return back()->withErrors(['log_date' => 'Monitoring untuk tank ini pada tanggal tersebut sudah ada.'])->withInput();
+            return $this->errorResponse('Monitoring untuk tank ini pada tanggal tersebut sudah ada.', 422, [
+                'log_date' => ['Monitoring untuk tank ini pada tanggal tersebut sudah ada.'],
+            ]);
         }
 
-        DailyMonitoring::create($validated + [
+        $monitoring = DailyMonitoring::create($validated + [
             'staff_id' => $this->staff()->id,
             'user_id' => null,
         ]);
 
-        return redirect()->route('staff.monitoring.index')
-            ->with('success', 'Data monitoring berhasil disimpan.');
+        return $this->successResponse(['monitoring' => $this->monitoringPayload($monitoring)], 'Data monitoring berhasil disimpan.', 201);
     }
 
-    public function edit(DailyMonitoring $dailyMonitoring): View
+    public function update(Request $request, DailyMonitoring $dailyMonitoring): JsonResponse
     {
-        abort_unless($this->owns($dailyMonitoring), 403);
-
-        return view('staff.monitoring.edit', [
-            'dailyMonitoring' => $dailyMonitoring,
-            'tanks' => $this->farmTanks(),
-        ]);
-    }
-
-    public function update(Request $request, DailyMonitoring $dailyMonitoring): RedirectResponse
-    {
-        abort_unless($this->owns($dailyMonitoring), 403);
+        abort_unless($dailyMonitoring->staff_id === $this->staff()->id, 403);
 
         $validated = $request->validate([
             'tank_id' => 'required|exists:tanks,id',
@@ -96,13 +100,7 @@ class StaffMonitoringController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        $tank = Tank::where('id', $validated['tank_id'])
-            ->where('farm_id', $this->staff()->farm_id)
-            ->first();
-
-        if (! $tank) {
-            abort(403);
-        }
+        abort_unless($this->farmTankIds()->contains($validated['tank_id']), 403);
 
         $exists = DailyMonitoring::where('tank_id', $validated['tank_id'])
             ->where('log_date', $validated['log_date'])
@@ -110,27 +108,22 @@ class StaffMonitoringController extends Controller
             ->exists();
 
         if ($exists) {
-            return back()->withErrors(['log_date' => 'Monitoring untuk tank ini pada tanggal tersebut sudah ada.'])->withInput();
+            return $this->errorResponse('Monitoring untuk tank ini pada tanggal tersebut sudah ada.', 422, [
+                'log_date' => ['Monitoring untuk tank ini pada tanggal tersebut sudah ada.'],
+            ]);
         }
 
         $dailyMonitoring->update($validated);
 
-        return redirect()->route('staff.monitoring.index')
-            ->with('success', 'Data monitoring berhasil diperbarui.');
+        return $this->successResponse(['monitoring' => $this->monitoringPayload($dailyMonitoring)], 'Data monitoring berhasil diperbarui.');
     }
 
-    public function destroy(DailyMonitoring $dailyMonitoring): RedirectResponse
+    public function destroy(DailyMonitoring $dailyMonitoring): JsonResponse
     {
-        abort_unless($this->owns($dailyMonitoring), 403);
+        abort_unless($dailyMonitoring->staff_id === $this->staff()->id, 403);
 
-        $dailyMonitoring->delete();
+        $dailyMonitoring->forceDelete();
 
-        return redirect()->route('staff.monitoring.index')
-            ->with('success', 'Data monitoring berhasil dihapus.');
-    }
-
-    private function owns(DailyMonitoring $dailyMonitoring): bool
-    {
-        return $dailyMonitoring->staff_id === $this->staff()->id;
+        return $this->successResponse(null, 'Data monitoring berhasil dihapus.');
     }
 }

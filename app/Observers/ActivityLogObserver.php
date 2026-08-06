@@ -7,6 +7,7 @@ use App\Models\Farm\ActivityLog;
 use App\Models\Farm\DailyMonitoring;
 use App\Models\Farm\NutrientAddition;
 use App\Models\Farm\PhDownLog;
+use App\Models\Farm\Staff;
 use App\Models\Farm\Tank;
 
 class ActivityLogObserver
@@ -36,11 +37,13 @@ class ActivityLogObserver
             $farmId = $entity->tank?->farm_id;
         }
 
-        if (auth('staff')->check()) {
+        $user = auth('staff')->user() ?? auth()->user();
+
+        if ($user instanceof Staff) {
             $userId = null;
-            $staffId = auth('staff')->id();
+            $staffId = $user->id;
         } else {
-            $userId = auth()->id();
+            $userId = $user?->id;
             $staffId = null;
         }
 

@@ -20,6 +20,7 @@ use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Staff\StaffAuthController;
 use App\Http\Controllers\Staff\StaffDashboardController;
+use App\Http\Controllers\Staff\StaffMonitoringController;
 use App\Http\Controllers\TankController;
 use Illuminate\Support\Facades\Route;
 
@@ -105,5 +106,10 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['auth:sanctum', 'staff'])->group(function () {
         Route::post('staff/logout', [StaffAuthController::class, 'logout']);
         Route::get('staff/dashboard', [StaffDashboardController::class, 'index']);
+        Route::get('staff/monitoring', [StaffMonitoringController::class, 'index']);
+        Route::post('staff/monitoring', [StaffMonitoringController::class, 'store']);
+        Route::get('staff/monitoring/{dailyMonitoring}', [StaffMonitoringController::class, 'show']);
+        Route::patch('staff/monitoring/{dailyMonitoring}', [StaffMonitoringController::class, 'update']);
+        Route::delete('staff/monitoring/{dailyMonitoring}', [StaffMonitoringController::class, 'destroy']);
     });
 });
