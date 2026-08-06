@@ -21,6 +21,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Staff\StaffAuthController;
 use App\Http\Controllers\Staff\StaffDashboardController;
 use App\Http\Controllers\Staff\StaffMonitoringController;
+use App\Http\Controllers\Staff\StaffNutrientAdditionController;
 use App\Http\Controllers\TankController;
 use Illuminate\Support\Facades\Route;
 
@@ -111,5 +112,12 @@ Route::prefix('v1')->group(function () {
         Route::get('staff/monitoring/{dailyMonitoring}', [StaffMonitoringController::class, 'show']);
         Route::patch('staff/monitoring/{dailyMonitoring}', [StaffMonitoringController::class, 'update']);
         Route::delete('staff/monitoring/{dailyMonitoring}', [StaffMonitoringController::class, 'destroy']);
+
+        // Nutrient Addition
+        Route::get('staff/nutrients', [StaffNutrientAdditionController::class, 'index']);
+        Route::post('staff/nutrients', [StaffNutrientAdditionController::class, 'store']);
+        Route::get('staff/nutrients/{nutrientAddition}', [StaffNutrientAdditionController::class, 'show']);
+        Route::patch('staff/nutrients/{nutrientAddition}', [StaffNutrientAdditionController::class, 'update']);
+        Route::delete('staff/nutrients/{nutrientAddition}', [StaffNutrientAdditionController::class, 'destroy']);
     });
 });
