@@ -12,10 +12,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Sanctum\HasApiTokens;
 
 class Staff extends Model implements Authenticatable
 {
-    use AuthenticatableTrait, HasFactory, SoftDeletes;
+    use AuthenticatableTrait, HasApiTokens, HasFactory, SoftDeletes;
 
     /** @use HasFactory<StaffFactory> */
     protected $fillable = [
