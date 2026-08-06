@@ -24,6 +24,7 @@ use App\Http\Controllers\Staff\StaffMonitoringController;
 use App\Http\Controllers\Staff\StaffNutrientAdditionController;
 use App\Http\Controllers\Staff\StaffPhDownController;
 use App\Http\Controllers\Staff\StaffReminderController;
+use App\Http\Controllers\Staff\StaffReportController;
 use App\Http\Controllers\TankController;
 use Illuminate\Support\Facades\Route;
 
@@ -136,5 +137,10 @@ Route::prefix('v1')->group(function () {
         Route::get('staff/reminders/calendar', [StaffReminderController::class, 'calendar']);
         Route::post('staff/reminders/occurrences/{occurrence}/done', [StaffReminderController::class, 'occurrenceDone']);
         Route::post('staff/reminders/occurrences/{occurrence}/skip', [StaffReminderController::class, 'occurrenceSkip']);
+
+        // Reports
+        Route::get('staff/reports/monitoring', [StaffReportController::class, 'monitoring']);
+        Route::get('staff/reports/nutrients', [StaffReportController::class, 'nutrient']);
+        Route::get('staff/reports/ph-down', [StaffReportController::class, 'phDown']);
     });
 });

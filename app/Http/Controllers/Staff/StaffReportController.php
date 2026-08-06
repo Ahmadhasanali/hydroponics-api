@@ -7,15 +7,19 @@ use App\Models\Farm\DailyMonitoring;
 use App\Models\Farm\NutrientAddition;
 use App\Models\Farm\PhDownLog;
 use App\Models\Farm\Tank;
-use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class StaffReportController extends Controller
 {
-    public function monitoring(Request $request): View
+    private function farmTanks(Request $request)
     {
-        $farm = auth('staff')->user()->farm;
-        $tanks = Tank::where('farm_id', $farm->id)->orderBy('name')->get();
+        return Tank::where('farm_id', $request->user()->farm_id)->orderBy('name')->get();
+    }
+
+    public function monitoring(Request $request): JsonResponse
+    {
+        $tanks = $this->farmTanks($request);
         $tankIds = $tanks->pluck('id');
 
         $aggregates = null;
@@ -23,7 +27,7 @@ class StaffReportController extends Controller
             $query = DailyMonitoring::where('tank_id', $request->input('tank_id'))
                 ->whereBetween('log_date', [$request->input('start_date'), $request->input('end_date')]);
 
-            $aggregates = (object) [
+            $aggregates = [
                 'count' => $query->count(),
                 'avg_ppm' => $query->avg('ppm'),
                 'highest_ppm' => $query->max('ppm'),
@@ -34,13 +38,15 @@ class StaffReportController extends Controller
             ];
         }
 
-        return view('staff.reports.monitoring', compact('tanks', 'aggregates'));
+        return $this->successResponse([
+            'tanks' => $tanks,
+            'aggregates' => $aggregates,
+        ]);
     }
 
-    public function nutrient(Request $request): View
+    public function nutrient(Request $request): JsonResponse
     {
-        $farm = auth('staff')->user()->farm;
-        $tanks = Tank::where('farm_id', $farm->id)->orderBy('name')->get();
+        $tanks = $this->farmTanks($request);
         $tankIds = $tanks->pluck('id');
 
         $aggregates = null;
@@ -48,20 +54,22 @@ class StaffReportController extends Controller
             $query = NutrientAddition::where('tank_id', $request->input('tank_id'))
                 ->whereBetween('log_date', [$request->input('start_date'), $request->input('end_date')]);
 
-            $aggregates = (object) [
+            $aggregates = [
                 'count' => $query->count(),
                 'total_nutrient_a_ml' => $query->sum('nutrient_a_ml'),
                 'total_nutrient_b_ml' => $query->sum('nutrient_b_ml'),
             ];
         }
 
-        return view('staff.reports.nutrient', compact('tanks', 'aggregates'));
+        return $this->successResponse([
+            'tanks' => $tanks,
+            'aggregates' => $aggregates,
+        ]);
     }
 
-    public function phDown(Request $request): View
+    public function phDown(Request $request): JsonResponse
     {
-        $farm = auth('staff')->user()->farm;
-        $tanks = Tank::where('farm_id', $farm->id)->orderBy('name')->get();
+        $tanks = $this->farmTanks($request);
         $tankIds = $tanks->pluck('id');
 
         $aggregates = null;
@@ -69,12 +77,15 @@ class StaffReportController extends Controller
             $query = PhDownLog::where('tank_id', $request->input('tank_id'))
                 ->whereBetween('log_date', [$request->input('start_date'), $request->input('end_date')]);
 
-            $aggregates = (object) [
+            $aggregates = [
                 'count' => $query->count(),
                 'total_ph_down_ml' => $query->sum('ph_down_ml'),
             ];
         }
 
-        return view('staff.reports.ph-down', compact('tanks', 'aggregates'));
+        return $this->successResponse([
+            'tanks' => $tanks,
+            'aggregates' => $aggregates,
+        ]);
     }
 }
