@@ -73,13 +73,16 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('tanks', TankController::class);
 
         // Daily Monitoring
-        Route::apiResource('monitoring', DailyMonitoringController::class);
+        Route::apiResource('monitoring', DailyMonitoringController::class)
+            ->parameters(['monitoring' => 'dailyMonitoring']);
 
         // Nutrient Addition
-        Route::apiResource('nutrients', NutrientAdditionController::class);
+        Route::apiResource('nutrients', NutrientAdditionController::class)
+            ->parameters(['nutrients' => 'nutrientAddition']);
 
         // pH Down
-        Route::apiResource('ph-down', PhDownLogController::class);
+        Route::apiResource('ph-down', PhDownLogController::class)
+            ->parameters(['ph-down' => 'phDownLog']);
 
         // Reports
         Route::get('reports/monitoring', [ReportController::class, 'monitoring']);
