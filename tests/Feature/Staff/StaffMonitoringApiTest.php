@@ -40,7 +40,7 @@ class StaffMonitoringApiTest extends TestCase
         $this->getJson('/api/v1/staff/monitoring')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonCount(2, 'data.data');
+            ->assertJsonCount(2, 'data');
     }
 
     public function test_staff_can_store_monitoring(): void
@@ -93,7 +93,7 @@ class StaffMonitoringApiTest extends TestCase
             'log_date' => '2026-08-01',
             'ppm' => 900,
             'ph' => 6.0,
-        ])->assertOk()->assertJsonPath('data.monitoring.ppm', 900);
+        ])->assertOk()->assertJsonPath('data.monitoring.ppm', '900.00');
     }
 
     public function test_staff_cannot_update_monitoring_of_another_staff(): void
@@ -117,6 +117,6 @@ class StaffMonitoringApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true);
 
-        $this->assertDatabaseMissing('daily_monitorings', ['id' => $monitoring->id]);
+        $this->assertSoftDeleted('daily_monitorings', ['id' => $monitoring->id]);
     }
 }

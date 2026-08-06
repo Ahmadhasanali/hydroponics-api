@@ -21,16 +21,6 @@ class StaffMonitoringController extends Controller
         return Tank::where('farm_id', $this->staff()->farm_id)->pluck('id');
     }
 
-    private function monitoringPayload(DailyMonitoring $monitoring): array
-    {
-        $data = $monitoring->toArray();
-        $data['ppm'] = (int) $data['ppm'];
-        $data['ph'] = (float) $data['ph'];
-        $data['water_temperature'] = $data['water_temperature'] === null ? null : (float) $data['water_temperature'];
-
-        return $data;
-    }
-
     public function index(): JsonResponse
     {
         $monitorings = DailyMonitoring::where('staff_id', $this->staff()->id)
@@ -38,22 +28,14 @@ class StaffMonitoringController extends Controller
             ->latest('log_date')
             ->paginate(20);
 
-        return $this->successResponse([
-            'data' => $monitorings->items(),
-            'meta' => [
-                'current_page' => $monitorings->currentPage(),
-                'last_page' => $monitorings->lastPage(),
-                'per_page' => $monitorings->perPage(),
-                'total' => $monitorings->total(),
-            ],
-        ]);
+        return $this->paginatedResponse($monitorings);
     }
 
     public function show(DailyMonitoring $dailyMonitoring): JsonResponse
     {
         abort_unless($dailyMonitoring->staff_id === $this->staff()->id, 403);
 
-        return $this->successResponse(['monitoring' => $this->monitoringPayload($dailyMonitoring->load('tank'))]);
+        return $this->successResponse(['monitoring' => $dailyMonitoring->load('tank')]);
     }
 
     public function store(Request $request): JsonResponse
@@ -84,7 +66,7 @@ class StaffMonitoringController extends Controller
             'user_id' => null,
         ]);
 
-        return $this->successResponse(['monitoring' => $this->monitoringPayload($monitoring)], 'Data monitoring berhasil disimpan.', 201);
+        return $this->successResponse(['monitoring' => $monitoring], 'Data monitoring berhasil disimpan.', 201);
     }
 
     public function update(Request $request, DailyMonitoring $dailyMonitoring): JsonResponse
@@ -115,14 +97,14 @@ class StaffMonitoringController extends Controller
 
         $dailyMonitoring->update($validated);
 
-        return $this->successResponse(['monitoring' => $this->monitoringPayload($dailyMonitoring)], 'Data monitoring berhasil diperbarui.');
+        return $this->successResponse(['monitoring' => $dailyMonitoring], 'Data monitoring berhasil diperbarui.');
     }
 
     public function destroy(DailyMonitoring $dailyMonitoring): JsonResponse
     {
         abort_unless($dailyMonitoring->staff_id === $this->staff()->id, 403);
 
-        $dailyMonitoring->forceDelete();
+        $dailyMonitoring->delete();
 
         return $this->successResponse(null, 'Data monitoring berhasil dihapus.');
     }
