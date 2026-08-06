@@ -47,7 +47,7 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:staff-login');
 
     // Authenticated routes
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'user'])->group(function () {
         // Auth
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('user', [AuthController::class, 'user']);

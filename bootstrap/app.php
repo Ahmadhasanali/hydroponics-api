@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\EnsureUser;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'superadmin' => EnsureSuperAdmin::class,
             'staff' => EnsureStaff::class,
+            'user' => EnsureUser::class,
         ]);
         $middleware->redirectGuestsTo(function (Request $request) {
             if ($request->is('staff*')) {

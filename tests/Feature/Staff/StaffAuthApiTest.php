@@ -104,4 +104,26 @@ class StaffAuthApiTest extends TestCase
 
         $this->assertSame(0, $staff->tokens()->count());
     }
+
+    public function test_staff_token_cannot_access_user_monitoring_endpoint(): void
+    {
+        $staff = Staff::factory()->create(['farm_id' => $this->farm->id]);
+
+        $token = $staff->createToken('staff-token', ['staff'])->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson("/api/v1/monitoring?farm_id={$this->farm->id}")
+            ->assertStatus(403);
+    }
+
+    public function test_staff_token_cannot_access_user_dashboard(): void
+    {
+        $staff = Staff::factory()->create(['farm_id' => $this->farm->id]);
+
+        $token = $staff->createToken('staff-token', ['staff'])->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/v1/dashboard')
+            ->assertStatus(403);
+    }
 }

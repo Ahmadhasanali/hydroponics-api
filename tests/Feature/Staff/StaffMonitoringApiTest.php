@@ -119,4 +119,24 @@ class StaffMonitoringApiTest extends TestCase
 
         $this->assertSoftDeleted('daily_monitorings', ['id' => $monitoring->id]);
     }
+
+    public function test_staff_monitoring_store_records_activity_log_with_staff_id(): void
+    {
+        $this->postJson('/api/v1/staff/monitoring', [
+            'tank_id' => $this->tank->id,
+            'log_date' => '2026-08-01',
+            'ppm' => 800,
+            'ph' => 6.2,
+            'water_temperature' => 25.5,
+            'notes' => 'Sehat',
+        ])->assertStatus(201);
+
+        $this->assertDatabaseHas('activity_logs', [
+            'farm_id' => $this->farm->id,
+            'action' => 'created',
+            'entity_type' => 'daily_monitoring',
+            'staff_id' => $this->staff->id,
+            'user_id' => null,
+        ]);
+    }
 }
