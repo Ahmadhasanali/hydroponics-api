@@ -17,11 +17,15 @@ class ActivityLog extends Model
         'entity_type',
         'entity_id',
         'description',
+        'before_state',
+        'after_state',
         'created_at',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
+        'before_state' => 'array',
+        'after_state' => 'array',
     ];
 
     public $timestamps = false;
