@@ -40,6 +40,7 @@ class ReminderGlobalApiTest extends TestCase
             'created_by_type' => User::class,
             'created_by_id' => $user->id,
             'title' => 'Reminder A',
+            'starts_at' => now()->addDay()->setTime(8, 0),
         ]);
         Reminder::factory()->create([
             'farm_id' => $farmB->id,

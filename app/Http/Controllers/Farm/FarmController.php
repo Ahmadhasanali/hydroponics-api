@@ -32,7 +32,12 @@ class FarmController extends Controller
 
     public function show(Farm $farm): JsonResponse
     {
-        $farm->load(['tanks', 'users']);
+        $farm->load([
+            'tanks',
+            'users' => function ($query) {
+                $query->orderBy('pivot_created_at');
+            },
+        ]);
 
         $farm->users->each(function ($user) {
             $user->role = $user->pivot->role;
