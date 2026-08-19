@@ -28,13 +28,13 @@ class AuthSetupTest extends TestCase
         $output = Artisan::output();
 
         $this->assertSame(0, $exitCode);
-        $this->assertStringContainsString('api/user', $output);
+        $this->assertStringContainsString('api/v1/user', $output);
 
-        $route = $this->app['router']->getRoutes()->getByName('api.user')
+        $route = $this->app['router']->getRoutes()->getByName('api.v1.user')
             ?? collect($this->app['router']->getRoutes()->getRoutes())
-                ->first(fn ($r) => $r->uri() === 'api/user');
+                ->first(fn ($r) => $r->uri() === 'api/v1/user');
 
-        $this->assertNotNull($route, 'Expected GET /api/user route to be registered');
+        $this->assertNotNull($route, 'Expected GET /api/v1/user route to be registered');
         $this->assertContains('auth:sanctum', $route->gatherMiddleware());
     }
 }

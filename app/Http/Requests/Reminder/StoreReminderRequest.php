@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Reminder;
 
-use App\Models\Farm;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -11,10 +10,13 @@ class StoreReminderRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        /** @var Farm $farm */
-        $farm = $this->route('farm');
+        $farmId = $this->input('farm_id');
 
-        return $farm->users()->where('user_id', $this->user()->id)->exists();
+        if (! $farmId || ! $this->user()->farms()->whereKey($farmId)->exists()) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -23,6 +25,7 @@ class StoreReminderRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'farm_id' => ['required', 'integer', 'exists:farms,id'],
             'title' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string'],
             'starts_at' => ['required', 'date', 'after:now'],

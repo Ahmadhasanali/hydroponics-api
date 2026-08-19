@@ -14,7 +14,7 @@ class FarmUserController extends Controller
 {
     public function index(Request $request, Farm $farm): JsonResponse
     {
-        Gate::authorize('view', $farm);
+        $this->authorize('view', $farm);
 
         $farm->load([
             'users' => function ($query) {
@@ -46,7 +46,7 @@ class FarmUserController extends Controller
 
         $farm->users()->attach($user->id, ['role' => 'manager']);
 
-        return $this->successResponse(['member' => $user->fresh()], 'Anggota berhasil ditambahkan.', 201);
+        return $this->successResponse(['farm' => $farm->fresh()->load('users')], 'Anggota berhasil ditambahkan.', 201);
     }
 
     public function destroy(Request $request, Farm $farm, FarmUser $farmUser): JsonResponse
@@ -54,21 +54,15 @@ class FarmUserController extends Controller
         Gate::authorize('manageMembers', $farm);
 
         if ($farmUser->farm_id !== $farm->id) {
-            return $this->errorResponse('Anggota tidak ditemukan.', 404, [
-                'error' => ['Anggota tidak ditemukan.'],
-            ]);
+            return $this->errorResponse('Anggota tidak ditemukan.', 404);
         }
 
         if ($farmUser->role === 'owner') {
-            return $this->errorResponse('Pemilik kebun tidak dapat dihapus.', 422, [
-                'error' => ['Pemilik kebun tidak dapat dihapus.'],
-            ]);
+            return $this->errorResponse('Pemilik kebun tidak dapat dihapus.', 422);
         }
 
         if ($farmUser->user_id === $request->user()->id) {
-            return $this->errorResponse('Anda tidak dapat menghapus diri sendiri.', 422, [
-                'error' => ['Anda tidak dapat menghapus diri sendiri.'],
-            ]);
+            return $this->errorResponse('Anda tidak dapat menghapus diri sendiri.', 422);
         }
 
         $farmUser->delete();

@@ -2,51 +2,49 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Auth\ForgotPasswordRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Models\User;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Validation\ValidationException;
 
 class PasswordResetController extends Controller
 {
-    public function sendResetLinkEmail(Request $request): JsonResponse
+    public function sendResetLinkEmail(ForgotPasswordRequest $request): JsonResponse
     {
-        $request->validate(['email' => 'required|email']);
+        $user = User::query()->where('email', $request->string('email'))->first();
 
-        $status = Password::sendResetLink($request->only('email'));
-
-        if ($status !== Password::RESET_LINK_SENT) {
-            throw ValidationException::withMessages([
-                'email' => [__($status)],
-            ]);
+        if ($user === null || ! $user->is_admin) {
+            Password::broker()->sendResetLink($request->only('email'));
         }
 
-        return $this->successResponse(null, __($status));
+        return $this->successResponse(null, __('Jika email terdaftar, kami telah mengirim link reset password ke email Anda.'));
     }
 
-    public function reset(Request $request): JsonResponse
+    public function reset(ResetPasswordRequest $request): JsonResponse
     {
-        $request->validate([
-            'token' => 'required',
-            'email' => 'required|email',
-            'password' => ['required', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
-        ]);
+        $user = User::query()->where('email', $request->string('email'))->first();
 
-        $status = Password::reset(
+        if ($user !== null && $user->is_admin) {
+            return $this->errorResponse(__('Link reset password tidak valid atau sudah kedaluwarsa.'), 422);
+        }
+
+        $status = Password::broker()->reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user, $password) {
-                $user->forceFill([
-                    'password' => \Illuminate\Support\Facades\Hash::make($password),
-                ])->save();
+            function ($user, $password): void {
+                $user->password = $password;
+                $user->save();
+                event(new PasswordReset($user));
+                Auth::login($user);
             }
         );
 
         if ($status !== Password::PASSWORD_RESET) {
-            throw ValidationException::withMessages([
-                'email' => [__($status)],
-            ]);
+            return $this->errorResponse(__('Link reset password tidak valid atau sudah kedaluwarsa.'), 422);
         }
 
-        return $this->successResponse(null, __($status));
+        return $this->successResponse(null, __('Password berhasil direset.'));
     }
 }

@@ -4,49 +4,30 @@ namespace App\Http\Controllers;
 
 use App\Models\Farm\NutrientAddition;
 use App\Models\Farm\Tank;
-use Illuminate\Contracts\View\View;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class NutrientAdditionController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): JsonResponse
     {
-        if (! $this->hasFarm($request)) {
-            return view('farm.no-farm');
+        $farmId = $request->integer('farm_id');
+
+        if (! $farmId) {
+            return $this->errorResponse('farm_id is required.', 422);
         }
 
-        $farmId = $this->selectedFarm($request)->id;
-        $tanks = Tank::where('farm_id', $farmId)->pluck('id');
-        $additions = NutrientAddition::whereIn('tank_id', $tanks)
+        $tankIds = Tank::where('farm_id', $farmId)->pluck('id');
+        $additions = NutrientAddition::whereIn('tank_id', $tankIds)
             ->with(['tank', 'user'])
             ->latest('log_date')
             ->paginate(20);
 
-        return view('nutrient-addition.index', compact('additions'));
+        return $this->paginatedResponse($additions);
     }
 
-    public function create(Request $request): View
+    public function store(Request $request): JsonResponse
     {
-        if (! $this->hasFarm($request)) {
-            return view('farm.no-farm');
-        }
-
-        $farmId = $this->selectedFarm($request)->id;
-        $tanks = Tank::where('farm_id', $farmId)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
-        return view('nutrient-addition.create', compact('tanks'));
-    }
-
-    public function store(Request $request): RedirectResponse
-    {
-        if (! $this->hasFarm($request)) {
-            return redirect()->route('farm.create');
-        }
-
         $validated = $request->validate([
             'tank_id' => 'required|exists:tanks,id',
             'log_date' => 'required|date',
@@ -57,24 +38,19 @@ class NutrientAdditionController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        NutrientAddition::create($validated + ['user_id' => auth()->id()]);
+        $addition = NutrientAddition::create($validated + ['user_id' => $request->user()->id]);
 
-        return redirect()->route('nutrient-addition.index')
-            ->with('success', 'Data AB Mix berhasil disimpan.');
+        return $this->successResponse(['nutrient' => $addition], 'Data AB Mix berhasil disimpan.', 201);
     }
 
-    public function edit(Request $request, NutrientAddition $nutrientAddition): View
+    public function show(NutrientAddition $nutrientAddition): JsonResponse
     {
-        $farmId = $request->session()->get('selected_farm_id');
-        $tanks = Tank::where('farm_id', $farmId)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $nutrientAddition->load(['tank', 'user']);
 
-        return view('nutrient-addition.edit', compact('nutrientAddition', 'tanks'));
+        return $this->successResponse(['nutrient' => $nutrientAddition]);
     }
 
-    public function update(Request $request, NutrientAddition $nutrientAddition): RedirectResponse
+    public function update(Request $request, NutrientAddition $nutrientAddition): JsonResponse
     {
         $validated = $request->validate([
             'tank_id' => 'required|exists:tanks,id',
@@ -88,15 +64,13 @@ class NutrientAdditionController extends Controller
 
         $nutrientAddition->update($validated);
 
-        return redirect()->route('nutrient-addition.index')
-            ->with('success', 'Data AB Mix berhasil diperbarui.');
+        return $this->successResponse(['nutrient' => $nutrientAddition], 'Data AB Mix berhasil diperbarui.');
     }
 
-    public function destroy(NutrientAddition $nutrientAddition): RedirectResponse
+    public function destroy(NutrientAddition $nutrientAddition): JsonResponse
     {
         $nutrientAddition->delete();
 
-        return redirect()->route('nutrient-addition.index')
-            ->with('success', 'Data AB Mix berhasil dihapus.');
+        return $this->successResponse(null, 'Data AB Mix berhasil dihapus.');
     }
 }

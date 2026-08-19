@@ -27,6 +27,7 @@ class AuthController extends Controller
 
         if (! $user->hasVerifiedEmail()) {
             Auth::logout();
+
             return $this->errorResponse('Email belum diverifikasi. Silakan cek inbox Anda.', 403);
         }
 

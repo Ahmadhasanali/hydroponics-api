@@ -37,7 +37,7 @@ class ChatPersistenceTest extends TestCase
         $this->fakeReply('Halo! Silakan tanya.');
 
         $user = User::factory()->create();
-        $response = $this->actingAs($user)->postJson('/api/chat', [
+        $response = $this->actingAs($user)->postJson('/api/v1/chat', [
             'message' => 'Halo bot',
         ]);
 
@@ -56,7 +56,7 @@ class ChatPersistenceTest extends TestCase
         $this->fakeReply('ok');
 
         $user = User::factory()->create();
-        $response = $this->actingAs($user)->postJson('/api/chat', [
+        $response = $this->actingAs($user)->postJson('/api/v1/chat', [
             'message' => 'Bagaimana cara menanam selada hidroponik di rumah untuk pemula?',
         ]);
 
@@ -92,7 +92,7 @@ class ChatPersistenceTest extends TestCase
             ['role' => 'assistant', 'content' => '560-840 PPM.'],
         ]);
 
-        $response = $this->actingAs($user)->postJson('/api/chat', [
+        $response = $this->actingAs($user)->postJson('/api/v1/chat', [
             'session_id' => $session->id,
             'message' => 'Dan pH-nya?',
         ]);
@@ -108,7 +108,7 @@ class ChatPersistenceTest extends TestCase
         Http::fake(['generativelanguage.googleapis.com/*' => Http::response('{}', 500)]);
 
         $user = User::factory()->create();
-        $this->actingAs($user)->postJson('/api/chat', ['message' => 'halo'])
+        $this->actingAs($user)->postJson('/api/v1/chat', ['message' => 'halo'])
             ->assertStatus(503);
 
         $this->assertDatabaseCount('chat_messages', 0);
@@ -127,7 +127,7 @@ class ChatPersistenceTest extends TestCase
             ['role' => 'assistant', 'content' => 'Hai!'],
         ]);
 
-        $this->actingAs($user)->postJson('/api/chat', ['session_id' => $session->id, 'message' => 'halo'])
+        $this->actingAs($user)->postJson('/api/v1/chat', ['session_id' => $session->id, 'message' => 'halo'])
             ->assertStatus(503);
 
         $this->assertDatabaseHas('chat_sessions', ['id' => $session->id]);

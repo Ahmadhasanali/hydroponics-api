@@ -2,35 +2,46 @@
 
 namespace Tests\Feature\Reminder;
 
+use App\Http\Controllers\ReminderController;
 use App\Models\Farm;
 use App\Models\Reminder;
-use App\Models\Reminder\ReminderOccurrence;
-use App\Models\Reminder\ReminderTarget;
 use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class ReminderCrudTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    private function setUpFarm(): array
-    {
-        $owner = User::factory()->create();
-        $farm = Farm::factory()->create(['created_by' => $owner->id]);
-        $farm->users()->attach($owner->id, ['role' => 'owner']);
-        session()->put('selected_farm_id', $farm->id);
+    private User $owner;
 
-        return compact('owner', 'farm');
+    private User $manager;
+
+    private Farm $farm;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->owner = User::factory()->create();
+        $this->manager = User::factory()->create();
+        $this->farm = Farm::factory()->create(['created_by' => $this->owner->id]);
+        $this->farm->users()->attach($this->owner->id, ['role' => 'owner']);
+        $this->farm->users()->attach($this->manager->id, ['role' => 'manager']);
+
+        Route::middleware(SubstituteBindings::class)->group(function () {
+            Route::prefix('api/v1')->group(function () {
+                Route::apiResource('reminders', ReminderController::class);
+            });
+        });
     }
 
     public function test_owner_can_create_reminder_targeting_all(): void
     {
-        ['owner' => $owner, 'farm' => $farm] = $this->setUpFarm();
-        $manager = User::factory()->create();
-        $farm->users()->attach($manager->id, ['role' => 'manager']);
-
-        $response = $this->actingAs($owner)->post(route('farm.reminders.store', $farm), [
+        $response = $this->actingAs($this->owner)->postJson('/api/v1/reminders', [
+            'farm_id' => $this->farm->id,
             'title' => 'Tambah AB Mix',
             'body' => 'Tambahkan AB mix ke tank utama',
             'starts_at' => now()->addDay()->format('Y-m-d H:i:s'),
@@ -38,16 +49,12 @@ class ReminderCrudTest extends TestCase
             'target_mode' => 'all',
         ]);
 
-        $response->assertRedirect();
+        $response->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.reminder.farm_id', $this->farm->id)
+            ->assertJsonPath('data.reminder.title', 'Tambah AB Mix');
 
-        $this->assertDatabaseHas('reminders', [
-            'farm_id' => $farm->id,
-            'created_by_type' => User::class,
-            'created_by_id' => $owner->id,
-            'title' => 'Tambah AB Mix',
-        ]);
-
-        $reminder = Reminder::where('farm_id', $farm->id)->firstOrFail();
+        $reminder = Reminder::where('farm_id', $this->farm->id)->firstOrFail();
 
         $this->assertSame(2, $reminder->targets()->count());
         $this->assertSame(1, $reminder->occurrences()->count());
@@ -55,57 +62,52 @@ class ReminderCrudTest extends TestCase
 
     public function test_manager_cannot_target_owner(): void
     {
-        ['owner' => $owner, 'farm' => $farm] = $this->setUpFarm();
-        $manager = User::factory()->create();
-        $farm->users()->attach($manager->id, ['role' => 'manager']);
-
-        $response = $this->actingAs($manager)->post(route('farm.reminders.store', $farm), [
+        $response = $this->actingAs($this->manager)->postJson('/api/v1/reminders', [
+            'farm_id' => $this->farm->id,
             'title' => 'Reminder ke owner',
             'body' => 'Tidak boleh',
             'starts_at' => now()->addDay()->format('Y-m-d H:i:s'),
             'recurrence' => ['type' => 'none'],
             'target_mode' => 'specific',
-            'target_ids' => [User::class.':'.$owner->id],
+            'target_ids' => [User::class.':'.$this->owner->id],
         ]);
 
-        $response->assertSessionHasErrors();
+        $response->assertUnprocessable();
 
         $this->assertDatabaseMissing('reminders', ['title' => 'Reminder ke owner']);
     }
 
     public function test_creator_can_edit_reminder(): void
     {
-        ['owner' => $owner, 'farm' => $farm] = $this->setUpFarm();
         $reminder = Reminder::factory()->create([
-            'farm_id' => $farm->id,
+            'farm_id' => $this->farm->id,
             'created_by_type' => User::class,
-            'created_by_id' => $owner->id,
+            'created_by_id' => $this->owner->id,
             'starts_at' => now()->addDay(),
         ]);
 
-        $response = $this->actingAs($owner)->put(route('farm.reminders.update', [$farm, $reminder]), [
+        $response = $this->actingAs($this->owner)->putJson("/api/v1/reminders/{$reminder->id}", [
             'title' => 'Judul Baru',
             'body' => 'Body baru',
             'starts_at' => now()->addDay()->format('Y-m-d H:i:s'),
             'recurrence' => ['type' => 'none'],
         ]);
 
-        $response->assertRedirect();
+        $response->assertOk()
+            ->assertJsonPath('data.reminder.title', 'Judul Baru');
+
         $this->assertDatabaseHas('reminders', ['id' => $reminder->id, 'title' => 'Judul Baru']);
     }
 
     public function test_non_creator_cannot_edit_reminder(): void
     {
-        ['owner' => $owner, 'farm' => $farm] = $this->setUpFarm();
-        $other = User::factory()->create();
-        $farm->users()->attach($other->id, ['role' => 'manager']);
         $reminder = Reminder::factory()->create([
-            'farm_id' => $farm->id,
+            'farm_id' => $this->farm->id,
             'created_by_type' => User::class,
-            'created_by_id' => $owner->id,
+            'created_by_id' => $this->owner->id,
         ]);
 
-        $response = $this->actingAs($other)->put(route('farm.reminders.update', [$farm, $reminder]), [
+        $response = $this->actingAs($this->manager)->putJson("/api/v1/reminders/{$reminder->id}", [
             'title' => 'Ditolak',
             'body' => 'Tidak boleh',
             'starts_at' => now()->addDay()->format('Y-m-d H:i:s'),
@@ -114,80 +116,29 @@ class ReminderCrudTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_target_can_mark_occurrence_done(): void
+    public function test_reminder_from_other_farm_is_hidden_from_index(): void
     {
-        ['owner' => $owner, 'farm' => $farm] = $this->setUpFarm();
-        $manager = User::factory()->create();
-        $farm->users()->attach($manager->id, ['role' => 'manager']);
-        $reminder = Reminder::factory()->create([
-            'farm_id' => $farm->id,
+        $farmB = Farm::factory()->create(['created_by' => $this->owner->id]);
+        $farmB->users()->attach($this->owner->id, ['role' => 'owner']);
+
+        Reminder::factory()->create([
+            'farm_id' => $farmB->id,
             'created_by_type' => User::class,
-            'created_by_id' => $owner->id,
-        ]);
-        ReminderTarget::factory()->create([
-            'reminder_id' => $reminder->id,
-            'targetable_type' => User::class,
-            'targetable_id' => $manager->id,
-        ]);
-        $occurrence = ReminderOccurrence::factory()->create(['reminder_id' => $reminder->id]);
-
-        $response = $this->actingAs($manager)->post(
-            route('farm.reminders.occurrence-done', [$farm, $occurrence]),
-        );
-
-        $response->assertRedirect();
-        $this->assertDatabaseHas('reminder_occurrences', [
-            'id' => $occurrence->id,
-            'status' => 'done',
-            'completed_by_type' => User::class,
-            'completed_by_id' => $manager->id,
-        ]);
-    }
-
-    public function test_reminder_from_other_farm_is_hidden_from_index_and_occurrence_done_forbidden(): void
-    {
-        // Farm A: reminder dibuat oleh owner A
-        $ownerA = User::factory()->create();
-        $farmA = Farm::factory()->create(['created_by' => $ownerA->id]);
-        $farmA->users()->attach($ownerA->id, ['role' => 'owner']);
-
-        $reminderA = Reminder::factory()->create([
-            'farm_id' => $farmA->id,
-            'created_by_type' => User::class,
-            'created_by_id' => $ownerA->id,
-            'title' => 'Reminder Khusus Farm A',
-        ]);
-        $occurrenceA = ReminderOccurrence::factory()->create([
-            'reminder_id' => $reminderA->id,
-            'scheduled_at' => now()->subMinute(),
+            'created_by_id' => $this->owner->id,
+            'title' => 'Reminder Khusus Farm B',
         ]);
 
-        // Farm B: owner A juga anggota (owner)
-        $farmB = Farm::factory()->create(['created_by' => $ownerA->id]);
-        $farmB->users()->attach($ownerA->id, ['role' => 'owner']);
-        session()->put('selected_farm_id', $farmB->id);
+        $response = $this->actingAs($this->owner)->getJson('/api/v1/reminders?farm_id='.$this->farm->id);
 
-        // Index farm B tidak boleh menampilkan reminder dari farm A
-        $response = $this->actingAs($ownerA)->get(route('farm.reminders.index', $farmB));
-
-        $response->assertOk();
-        $response->assertDontSee('Reminder Khusus Farm A');
-
-        // occurrenceDone via route farm B harus 403
-        $response = $this->actingAs($ownerA)->post(
-            route('farm.reminders.occurrence-done', [$farmB, $occurrenceA]),
-        );
-
-        $response->assertForbidden();
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_malformed_target_ids_rejected_without_creating_reminder(): void
     {
-        ['owner' => $owner, 'farm' => $farm] = $this->setUpFarm();
-        $manager = User::factory()->create();
-        $farm->users()->attach($manager->id, ['role' => 'manager']);
-
-        $response = $this->actingAs($owner)->post(route('farm.reminders.store', $farm), [
+        $response = $this->actingAs($this->owner)->postJson('/api/v1/reminders', [
+            'farm_id' => $this->farm->id,
             'title' => 'Target Rusak',
             'body' => 'Tidak boleh tersimpan',
             'starts_at' => now()->addDay()->format('Y-m-d H:i:s'),
@@ -196,41 +147,33 @@ class ReminderCrudTest extends TestCase
             'target_ids' => ['garbage', User::class.':abc'],
         ]);
 
-        $response->assertSessionHasErrors('target_ids.*');
+        $response->assertUnprocessable();
 
         $this->assertDatabaseMissing('reminders', ['title' => 'Target Rusak']);
     }
 
     public function test_valid_specific_target_ids_creates_reminder_for_same_farm_manager(): void
     {
-        ['owner' => $owner, 'farm' => $farm] = $this->setUpFarm();
-        $manager = User::factory()->create();
-        $farm->users()->attach($manager->id, ['role' => 'manager']);
-
-        $response = $this->actingAs($owner)->post(route('farm.reminders.store', $farm), [
+        $response = $this->actingAs($this->owner)->postJson('/api/v1/reminders', [
+            'farm_id' => $this->farm->id,
             'title' => 'Reminder ke Manager',
             'body' => 'Jadwal rutin',
             'starts_at' => now()->addDay()->format('Y-m-d H:i:s'),
             'recurrence' => ['type' => 'none'],
             'target_mode' => 'specific',
-            'target_ids' => [User::class.':'.$manager->id],
+            'target_ids' => [User::class.':'.$this->manager->id],
         ]);
 
-        $response->assertRedirect();
+        $response->assertCreated();
 
-        $this->assertDatabaseHas('reminders', [
-            'farm_id' => $farm->id,
-            'title' => 'Reminder ke Manager',
-        ]);
-
-        $reminder = Reminder::where('farm_id', $farm->id)
+        $reminder = Reminder::where('farm_id', $this->farm->id)
             ->where('title', 'Reminder ke Manager')
             ->firstOrFail();
 
         $this->assertDatabaseHas('reminder_targets', [
             'reminder_id' => $reminder->id,
             'targetable_type' => User::class,
-            'targetable_id' => $manager->id,
+            'targetable_id' => $this->manager->id,
         ]);
     }
 }

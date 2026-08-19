@@ -16,7 +16,7 @@ class ChatSessionControllerTest extends TestCase
     #[Test]
     public function guest_is_redirected_to_login(): void
     {
-        $this->getJson('/api/chat/sessions')->assertUnauthorized();
+        $this->getJson('/api/v1/chat/sessions')->assertUnauthorized();
     }
 
     #[Test]
@@ -28,7 +28,7 @@ class ChatSessionControllerTest extends TestCase
         ChatMessage::factory()->for($older)->create();
         $older->touch();
 
-        $this->actingAs($user)->getJson('/api/chat/sessions')
+        $this->actingAs($user)->getJson('/api/v1/chat/sessions')
             ->assertOk()
             ->assertJsonPath('sessions.0.title', 'Tua')
             ->assertJsonPath('sessions.0.messages_count', 1)
@@ -43,7 +43,7 @@ class ChatSessionControllerTest extends TestCase
         $trashed = ChatSession::factory()->for($user)->create(['title' => 'Sampah']);
         $trashed->delete();
 
-        $this->actingAs($user)->getJson('/api/chat/sessions')
+        $this->actingAs($user)->getJson('/api/v1/chat/sessions')
             ->assertOk()
             ->assertJsonCount(1, 'sessions')
             ->assertJsonMissing(['title' => 'Sampah']);
@@ -55,7 +55,7 @@ class ChatSessionControllerTest extends TestCase
         $other = User::factory()->create();
         ChatSession::factory()->for($other)->create();
 
-        $this->actingAs(User::factory()->create())->getJson('/api/chat/sessions')
+        $this->actingAs(User::factory()->create())->getJson('/api/v1/chat/sessions')
             ->assertOk()
             ->assertJsonCount(0, 'sessions');
     }
@@ -65,7 +65,7 @@ class ChatSessionControllerTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->postJson('/api/chat/sessions')
+        $this->actingAs($user)->postJson('/api/v1/chat/sessions')
             ->assertCreated()
             ->assertJsonPath('session.title', null);
 
@@ -78,7 +78,7 @@ class ChatSessionControllerTest extends TestCase
         $user = User::factory()->create();
         $session = ChatSession::factory()->for($user)->create();
 
-        $this->actingAs($user)->patchJson("/api/chat/sessions/{$session->id}", ['title' => 'Panen Selada'])
+        $this->actingAs($user)->patchJson("/api/v1/chat/sessions/{$session->id}", ['title' => 'Panen Selada'])
             ->assertOk()
             ->assertJsonPath('session.title', 'Panen Selada');
 
@@ -91,9 +91,9 @@ class ChatSessionControllerTest extends TestCase
         $user = User::factory()->create();
         $session = ChatSession::factory()->for($user)->create();
 
-        $this->actingAs($user)->patchJson("/api/chat/sessions/{$session->id}", ['title' => ''])
+        $this->actingAs($user)->patchJson("/api/v1/chat/sessions/{$session->id}", ['title' => ''])
             ->assertUnprocessable();
-        $this->actingAs($user)->patchJson("/api/chat/sessions/{$session->id}", ['title' => str_repeat('a', 61)])
+        $this->actingAs($user)->patchJson("/api/v1/chat/sessions/{$session->id}", ['title' => str_repeat('a', 61)])
             ->assertUnprocessable();
     }
 
@@ -104,10 +104,10 @@ class ChatSessionControllerTest extends TestCase
         $session = ChatSession::factory()->for($other)->create();
 
         $this->actingAs(User::factory()->create())
-            ->patchJson("/api/chat/sessions/{$session->id}", ['title' => 'Bajak'])
+            ->patchJson("/api/v1/chat/sessions/{$session->id}", ['title' => 'Bajak'])
             ->assertNotFound();
         $this->actingAs(User::factory()->create())
-            ->deleteJson("/api/chat/sessions/{$session->id}")
+            ->deleteJson("/api/v1/chat/sessions/{$session->id}")
             ->assertNotFound();
     }
 
@@ -117,7 +117,7 @@ class ChatSessionControllerTest extends TestCase
         $user = User::factory()->create();
         $session = ChatSession::factory()->for($user)->create();
 
-        $this->actingAs($user)->deleteJson("/api/chat/sessions/{$session->id}")->assertNoContent();
+        $this->actingAs($user)->deleteJson("/api/v1/chat/sessions/{$session->id}")->assertNoContent();
 
         $this->assertSoftDeleted('chat_sessions', ['id' => $session->id]);
     }

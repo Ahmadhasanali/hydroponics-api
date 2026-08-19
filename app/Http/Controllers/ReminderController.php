@@ -8,12 +8,11 @@ use App\Models\Farm;
 use App\Models\Reminder;
 use App\Models\Reminder\ReminderOccurrence;
 use App\Models\Reminder\ReminderTarget;
-use App\Models\User;
 use App\Services\ReminderRecurrenceService;
 use App\Services\ReminderTargetResolver;
-use Illuminate\Contracts\View\View;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -25,8 +24,15 @@ class ReminderController extends Controller
         private readonly ReminderRecurrenceService $recurrence,
     ) {}
 
-    public function index(Request $request, Farm $farm): View
+    public function index(Request $request): JsonResponse
     {
+        $farmId = $request->integer('farm_id');
+
+        if (! $farmId) {
+            return $this->errorResponse('farm_id is required.', 422);
+        }
+
+        $farm = Farm::findOrFail($farmId);
         $this->authorize('view', $farm);
 
         $visibleIds = $this->resolver->visibleReminderIds($request->user());
@@ -34,38 +40,18 @@ class ReminderController extends Controller
         $reminders = Reminder::query()
             ->where('farm_id', $farm->id)
             ->whereIn('id', $visibleIds)
-            ->with('targets.targetable')
+            ->with('targets.targetable', 'occurrences')
             ->orderByDesc('starts_at')
-            ->get();
+            ->paginate(30);
 
-        return view('reminders.index', compact('farm', 'reminders'));
+        return $this->paginatedResponse($reminders, 'Daftar reminder.');
     }
 
-    public function create(Request $request, Farm $farm): View
-    {
-        $this->authorize('view', $farm);
-
-        $farm->load('users', 'staff');
-        $eligible = [];
-
-        foreach ($farm->users as $member) {
-            if ($this->resolver->canTarget($request->user(), $farm, $member)) {
-                $eligible[] = ['id' => $member::class.':'.$member->id, 'name' => $member->name];
-            }
-        }
-
-        foreach ($farm->staff as $staff) {
-            if ($this->resolver->canTarget($request->user(), $farm, $staff)) {
-                $eligible[] = ['id' => $staff::class.':'.$staff->id, 'name' => $staff->name.' (Petugas)'];
-            }
-        }
-
-        return view('reminders.create', compact('farm', 'eligible'));
-    }
-
-    public function store(StoreReminderRequest $request, Farm $farm): RedirectResponse
+    public function store(StoreReminderRequest $request): JsonResponse
     {
         $validated = $request->validated();
+
+        $farm = Farm::findOrFail($validated['farm_id']);
 
         $targets = $this->resolver->resolveTargets(
             $request->user(),
@@ -75,8 +61,7 @@ class ReminderController extends Controller
         );
 
         if ($targets === []) {
-            return back()->withErrors(['target_mode' => 'Tidak ada target yang valid untuk reminder ini.'])
-                ->withInput();
+            return $this->errorResponse('Tidak ada target yang valid untuk reminder ini.', 422);
         }
 
         $recurrence = $request->recurrence() ?? ['type' => 'none'];
@@ -114,41 +99,25 @@ class ReminderController extends Controller
             return $reminder;
         });
 
-        return redirect()->route('farm.reminders.index', $farm)
-            ->with('success', 'Reminder berhasil dibuat.');
+        return $this->successResponse(
+            ['reminder' => $reminder->load('targets.targetable', 'occurrences')],
+            'Reminder berhasil dibuat.',
+            201,
+        );
     }
 
-    public function show(Request $request, Farm $farm, Reminder $reminder): View
+    public function show(Request $request, Reminder $reminder): JsonResponse
     {
         $this->authorize('view', $reminder);
 
-        if ($reminder->farm_id !== $farm->id) {
-            abort(404);
-        }
-
         $reminder->load(['targets.targetable', 'occurrences']);
 
-        return view('reminders.show', compact('farm', 'reminder'));
+        return $this->successResponse(['reminder' => $reminder]);
     }
 
-    public function edit(Request $request, Farm $farm, Reminder $reminder): View
+    public function update(UpdateReminderRequest $request, Reminder $reminder): JsonResponse
     {
         Gate::authorize('update', $reminder);
-
-        if ($reminder->farm_id !== $farm->id) {
-            abort(404);
-        }
-
-        return view('reminders.edit', compact('farm', 'reminder'));
-    }
-
-    public function update(UpdateReminderRequest $request, Farm $farm, Reminder $reminder): RedirectResponse
-    {
-        Gate::authorize('update', $reminder);
-
-        if ($reminder->farm_id !== $farm->id) {
-            abort(404);
-        }
 
         $validated = $request->validated();
 
@@ -160,7 +129,6 @@ class ReminderController extends Controller
             'advance_notify_minutes' => $validated['advance_notify_minutes'] ?? null,
         ]);
 
-        // Reset occurrence yang belum dikirim agar mengikuti jadwal baru
         $reminder->occurrences()
             ->whereNull('notified_at')
             ->whereNull('advance_notified_at')
@@ -176,123 +144,18 @@ class ReminderController extends Controller
                 : null,
         ]);
 
-        return redirect()->route('farm.reminders.show', [$farm, $reminder])
-            ->with('success', 'Reminder berhasil diperbarui.');
+        return $this->successResponse(
+            ['reminder' => $reminder->refresh()->load('targets.targetable', 'occurrences')],
+            'Reminder berhasil diperbarui.',
+        );
     }
 
-    public function destroy(Request $request, Farm $farm, Reminder $reminder): RedirectResponse
+    public function destroy(Request $request, Reminder $reminder): Response
     {
         Gate::authorize('delete', $reminder);
 
-        if ($reminder->farm_id !== $farm->id) {
-            abort(404);
-        }
-
         $reminder->delete();
 
-        return redirect()->route('farm.reminders.index', $farm)
-            ->with('success', 'Reminder berhasil dihapus.');
-    }
-
-    public function calendar(Request $request, Farm $farm): View
-    {
-        $this->authorize('view', $farm);
-
-        $month = $request->input('month', now()->format('Y-m'));
-        $start = Carbon::parse($month.'-01')->startOfMonth();
-        $end = $start->copy()->endOfMonth();
-
-        $visibleIds = $this->resolver->visibleReminderIds($request->user());
-
-        $reminders = Reminder::query()
-            ->where('farm_id', $farm->id)
-            ->whereIn('id', $visibleIds)
-            ->get();
-
-        // Occurrence tersimpan (sudah di-track) dalam rentang bulan
-        $stored = ReminderOccurrence::query()
-            ->whereHas('reminder', fn ($q) => $q->where('farm_id', $farm->id))
-            ->whereIn('reminder_id', $visibleIds)
-            ->whereBetween('scheduled_at', [$start, $end])
-            ->with('reminder')
-            ->get();
-
-        // Occurrence yang belum tersimpan untuk reminder recurring (dijabarkan on-demand)
-        $generated = collect();
-
-        foreach ($reminders as $reminder) {
-            $generated = $generated->concat(
-                collect($this->recurrence->generateOccurrences($reminder, $start, $end))
-                    ->map(fn (Carbon $c) => (object) [
-                        'scheduled_at' => $c,
-                        'reminder' => $reminder,
-                    ]),
-            );
-        }
-
-        // Gabungkan, buang duplikat (yang sudah tersimpan), lalu group per tanggal
-        $storedKeys = $stored->map(fn ($o) => $o->reminder_id.'|'.$o->scheduled_at->format('Y-m-d H:i'));
-
-        $byDate = $stored
-            ->concat($generated->filter(fn ($item) => ! $storedKeys->contains(
-                $item->reminder->id.'|'.$item->scheduled_at->format('Y-m-d H:i'),
-            )))
-            ->groupBy(fn ($item) => $item->scheduled_at->format('Y-m-d'));
-
-        return view('reminders.calendar', compact('farm', 'byDate', 'start', 'month'));
-    }
-
-    public function occurrenceDone(Request $request, Farm $farm, ReminderOccurrence $occurrence): RedirectResponse
-    {
-        if ($occurrence->reminder->farm_id !== $farm->id) {
-            abort(403);
-        }
-
-        $user = $request->user();
-
-        $canComplete = $occurrence->reminder->created_by_type === User::class
-            && $occurrence->reminder->created_by_id === $user->id;
-
-        if (! $canComplete) {
-            $canComplete = $occurrence->reminder->targets()
-                ->where('targetable_type', User::class)
-                ->where('targetable_id', $user->id)
-                ->exists();
-        }
-
-        if (! $canComplete) {
-            abort(403);
-        }
-
-        $occurrence->markDone(User::class, $user->id);
-
-        return back()->with('success', 'Reminder ditandai selesai.');
-    }
-
-    public function occurrenceSkip(Request $request, Farm $farm, ReminderOccurrence $occurrence): RedirectResponse
-    {
-        if ($occurrence->reminder->farm_id !== $farm->id) {
-            abort(403);
-        }
-
-        $user = $request->user();
-
-        $canSkip = $occurrence->reminder->created_by_type === User::class
-            && $occurrence->reminder->created_by_id === $user->id;
-
-        if (! $canSkip) {
-            $canSkip = $occurrence->reminder->targets()
-                ->where('targetable_type', User::class)
-                ->where('targetable_id', $user->id)
-                ->exists();
-        }
-
-        if (! $canSkip) {
-            abort(403);
-        }
-
-        $occurrence->markSkipped();
-
-        return back()->with('success', 'Reminder dilewati.');
+        return response()->noContent();
     }
 }

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\RegistrationController;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,6 +23,8 @@ class AuthApiTest extends TestCase
 
         Route::post('api/v1/login', [AuthController::class, 'login']);
         Route::post('api/v1/register', [RegistrationController::class, 'register']);
+        Route::get('email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+            ->name('verification.verify');
     }
 
     private function credentials(User $user): array

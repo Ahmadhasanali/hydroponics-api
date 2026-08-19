@@ -5,31 +5,24 @@ namespace App\Http\Controllers;
 use App\Models\Farm\DailyMonitoring;
 use App\Models\Farm\NutrientAddition;
 use App\Models\Farm\PhDownLog;
-use App\Models\Farm\Tank;
-use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
-    public function monitoring(Request $request): View
+    public function monitoring(Request $request): JsonResponse
     {
-        if (! $this->hasFarm($request)) {
-            return view('farm.no-farm');
-        }
-
-        $farmId = $this->selectedFarm($request)->id;
-        $tanks = Tank::where('farm_id', $farmId)->orderBy('name')->get();
-
+        $farmId = $request->integer('farm_id');
         $tankId = $request->input('tank_id');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
         $aggregates = null;
-        if ($tankId && $startDate && $endDate) {
+        if ($farmId && $tankId && $startDate && $endDate) {
             $query = DailyMonitoring::where('tank_id', $tankId)
                 ->whereBetween('log_date', [$startDate, $endDate]);
 
-            $aggregates = (object) [
+            $aggregates = [
                 'count' => $query->count(),
                 'avg_ppm' => $query->avg('ppm'),
                 'highest_ppm' => $query->max('ppm'),
@@ -40,61 +33,49 @@ class ReportController extends Controller
             ];
         }
 
-        return view('reports.monitoring', compact('tanks', 'tankId', 'startDate', 'endDate', 'aggregates'));
+        return $this->successResponse(['aggregates' => $aggregates]);
     }
 
-    public function nutrient(Request $request): View
+    public function nutrient(Request $request): JsonResponse
     {
-        if (! $this->hasFarm($request)) {
-            return view('farm.no-farm');
-        }
-
-        $farmId = $this->selectedFarm($request)->id;
-        $tanks = Tank::where('farm_id', $farmId)->orderBy('name')->get();
-
+        $farmId = $request->integer('farm_id');
         $tankId = $request->input('tank_id');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
         $aggregates = null;
-        if ($tankId && $startDate && $endDate) {
+        if ($farmId && $tankId && $startDate && $endDate) {
             $query = NutrientAddition::where('tank_id', $tankId)
                 ->whereBetween('log_date', [$startDate, $endDate]);
 
-            $aggregates = (object) [
+            $aggregates = [
                 'count' => $query->count(),
                 'total_nutrient_a_ml' => $query->sum('nutrient_a_ml'),
                 'total_nutrient_b_ml' => $query->sum('nutrient_b_ml'),
             ];
         }
 
-        return view('reports.nutrient', compact('tanks', 'tankId', 'startDate', 'endDate', 'aggregates'));
+        return $this->successResponse(['aggregates' => $aggregates]);
     }
 
-    public function phDown(Request $request): View
+    public function phDown(Request $request): JsonResponse
     {
-        if (! $this->hasFarm($request)) {
-            return view('farm.no-farm');
-        }
-
-        $farmId = $this->selectedFarm($request)->id;
-        $tanks = Tank::where('farm_id', $farmId)->orderBy('name')->get();
-
+        $farmId = $request->integer('farm_id');
         $tankId = $request->input('tank_id');
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
         $aggregates = null;
-        if ($tankId && $startDate && $endDate) {
+        if ($farmId && $tankId && $startDate && $endDate) {
             $query = PhDownLog::where('tank_id', $tankId)
                 ->whereBetween('log_date', [$startDate, $endDate]);
 
-            $aggregates = (object) [
+            $aggregates = [
                 'count' => $query->count(),
                 'total_ph_down_ml' => $query->sum('ph_down_ml'),
             ];
         }
 
-        return view('reports.ph-down', compact('tanks', 'tankId', 'startDate', 'endDate', 'aggregates'));
+        return $this->successResponse(['aggregates' => $aggregates]);
     }
 }

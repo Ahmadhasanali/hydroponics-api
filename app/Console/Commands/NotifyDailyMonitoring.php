@@ -30,7 +30,7 @@ class NotifyDailyMonitoring extends Command
                 $user,
                 'Waktunya Monitoring',
                 'Catat PPM & pH tangki hari ini',
-                route('daily-monitoring.create'),
+                url('/monitoring'),
             );
         }
 

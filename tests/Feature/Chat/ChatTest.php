@@ -24,7 +24,7 @@ class ChatTest extends TestCase
     #[Test]
     public function guest_is_redirected_to_login(): void
     {
-        $this->postJson('/api/chat', ['message' => 'halo'])->assertUnauthorized();
+        $this->postJson('/api/v1/chat', ['message' => 'halo'])->assertUnauthorized();
     }
 
     #[Test]
@@ -40,7 +40,7 @@ class ChatTest extends TestCase
 
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->postJson('/api/chat', [
+        $response = $this->actingAs($user)->postJson('/api/v1/chat', [
             'message' => 'Berapa PPM ideal selada?',
         ]);
 
@@ -85,7 +85,7 @@ class ChatTest extends TestCase
                 ->whenEmpty(Http::response([], 500)),
         ]);
 
-        $response = $this->actingAs($user)->postJson('/api/chat', [
+        $response = $this->actingAs($user)->postJson('/api/v1/chat', [
             'message' => 'Farm saya apa saja?',
         ]);
 
@@ -116,7 +116,7 @@ class ChatTest extends TestCase
 
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->postJson('/api/chat', [
+        $response = $this->actingAs($user)->postJson('/api/v1/chat', [
             'message' => 'halo',
         ]);
 
@@ -153,7 +153,7 @@ class ChatTest extends TestCase
 
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->postJson('/api/chat', [
+        $response = $this->actingAs($user)->postJson('/api/v1/chat', [
             'message' => 'Farm saya apa saja?',
         ]);
 
@@ -178,11 +178,11 @@ class ChatTest extends TestCase
         $user = User::factory()->create();
 
         for ($i = 0; $i < 10; $i++) {
-            $this->actingAs($user)->postJson('/api/chat', ['message' => 'halo'])
+            $this->actingAs($user)->postJson('/api/v1/chat', ['message' => 'halo'])
                 ->assertOk();
         }
 
-        $this->actingAs($user)->postJson('/api/chat', ['message' => 'halo'])
+        $this->actingAs($user)->postJson('/api/v1/chat', ['message' => 'halo'])
             ->assertStatus(429);
     }
 }

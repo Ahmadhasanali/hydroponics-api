@@ -4,54 +4,31 @@ namespace App\Http\Controllers;
 
 use App\Models\Farm\DailyMonitoring;
 use App\Models\Farm\Tank;
-use Illuminate\Contracts\View\View;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class DailyMonitoringController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): JsonResponse
     {
-        if (! $this->hasFarm($request)) {
-            return view('farm.no-farm');
+        $farmId = $request->integer('farm_id');
+
+        if (! $farmId) {
+            return $this->errorResponse('farm_id is required.', 422);
         }
 
-        $farmId = $this->selectedFarm($request)->id;
-        $tanks = Tank::where('farm_id', $farmId)->pluck('id');
+        $tankIds = Tank::where('farm_id', $farmId)->pluck('id');
 
-        // TODO: add search/filter by tank name, date range
-
-        // TODO: add search/filter by tank and date range
-
-        $monitorings = DailyMonitoring::whereIn('tank_id', $tanks)
+        $monitorings = DailyMonitoring::whereIn('tank_id', $tankIds)
             ->with(['tank', 'user'])
             ->latest('log_date')
             ->paginate(20);
 
-        return view('daily-monitoring.index', compact('monitorings'));
+        return $this->paginatedResponse($monitorings);
     }
 
-    public function create(Request $request): View
+    public function store(Request $request): JsonResponse
     {
-        if (! $this->hasFarm($request)) {
-            return view('farm.no-farm');
-        }
-
-        $farmId = $this->selectedFarm($request)->id;
-        $tanks = Tank::where('farm_id', $farmId)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
-        return view('daily-monitoring.create', compact('tanks'));
-    }
-
-    public function store(Request $request): RedirectResponse
-    {
-        if (! $this->hasFarm($request)) {
-            return redirect()->route('farm.create');
-        }
-
         $validated = $request->validate([
             'tank_id' => 'required|exists:tanks,id',
             'log_date' => 'required|date',
@@ -66,36 +43,30 @@ class DailyMonitoringController extends Controller
             ->exists();
 
         if ($exists) {
-            return back()->withErrors(['log_date' => 'Monitoring untuk tank ini pada tanggal tersebut sudah ada.'])->withInput();
+            return $this->errorResponse('Monitoring untuk tank ini pada tanggal tersebut sudah ada.', 422, [
+                'log_date' => ['Monitoring untuk tank ini pada tanggal tersebut sudah ada.'],
+            ]);
         }
 
         $tank = Tank::find($validated['tank_id']);
         $warnings = $this->checkTargetRange($validated, $tank);
 
-        DailyMonitoring::create($validated + ['user_id' => $request->user()->id]);
+        $monitoring = DailyMonitoring::create($validated + ['user_id' => $request->user()->id]);
 
-        $redirect = redirect()->route('daily-monitoring.index')
-            ->with('success', 'Data monitoring berhasil disimpan.');
-
-        if ($warnings) {
-            $redirect->with('warning', $warnings);
-        }
-
-        return $redirect;
+        return $this->successResponse([
+            'monitoring' => $monitoring,
+            'warnings' => $warnings,
+        ], 'Data monitoring berhasil disimpan.', 201);
     }
 
-    public function edit(DailyMonitoring $dailyMonitoring): View
+    public function show(DailyMonitoring $dailyMonitoring): JsonResponse
     {
-        $farmId = request()->session()->get('selected_farm_id');
-        $tanks = Tank::where('farm_id', $farmId)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $dailyMonitoring->load(['tank', 'user']);
 
-        return view('daily-monitoring.edit', compact('dailyMonitoring', 'tanks'));
+        return $this->successResponse(['monitoring' => $dailyMonitoring]);
     }
 
-    public function update(Request $request, DailyMonitoring $dailyMonitoring): RedirectResponse
+    public function update(Request $request, DailyMonitoring $dailyMonitoring): JsonResponse
     {
         $validated = $request->validate([
             'tank_id' => 'required|exists:tanks,id',
@@ -112,7 +83,9 @@ class DailyMonitoringController extends Controller
             ->exists();
 
         if ($exists) {
-            return back()->withErrors(['log_date' => 'Monitoring untuk tank ini pada tanggal tersebut sudah ada.'])->withInput();
+            return $this->errorResponse('Monitoring untuk tank ini pada tanggal tersebut sudah ada.', 422, [
+                'log_date' => ['Monitoring untuk tank ini pada tanggal tersebut sudah ada.'],
+            ]);
         }
 
         $tank = Tank::find($validated['tank_id']);
@@ -120,22 +93,17 @@ class DailyMonitoringController extends Controller
 
         $dailyMonitoring->update($validated);
 
-        $redirect = redirect()->route('daily-monitoring.index')
-            ->with('success', 'Data monitoring berhasil diperbarui.');
-
-        if ($warnings) {
-            $redirect->with('warning', $warnings);
-        }
-
-        return $redirect;
+        return $this->successResponse([
+            'monitoring' => $dailyMonitoring,
+            'warnings' => $warnings,
+        ], 'Data monitoring berhasil diperbarui.');
     }
 
-    public function destroy(DailyMonitoring $dailyMonitoring): RedirectResponse
+    public function destroy(DailyMonitoring $dailyMonitoring): JsonResponse
     {
         $dailyMonitoring->delete();
 
-        return redirect()->route('daily-monitoring.index')
-            ->with('success', 'Data monitoring berhasil dihapus.');
+        return $this->successResponse(null, 'Data monitoring berhasil dihapus.');
     }
 
     private function checkTargetRange(array $validated, Tank $tank): ?string

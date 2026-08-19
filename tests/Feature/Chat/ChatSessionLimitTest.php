@@ -29,7 +29,7 @@ class ChatSessionLimitTest extends TestCase
             ChatSession::factory()->for($user)->create();
         }
 
-        $this->actingAs($user)->postJson('/api/chat/sessions')->assertCreated();
+        $this->actingAs($user)->postJson('/api/v1/chat/sessions')->assertCreated();
 
         $this->assertSoftDeleted('chat_sessions', ['id' => $oldest->id]);
         $this->assertSame(50, ChatSession::where('user_id', $user->id)->count());

@@ -4,49 +4,30 @@ namespace App\Http\Controllers;
 
 use App\Models\Farm\PhDownLog;
 use App\Models\Farm\Tank;
-use Illuminate\Contracts\View\View;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PhDownLogController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): JsonResponse
     {
-        if (! $this->hasFarm($request)) {
-            return view('farm.no-farm');
+        $farmId = $request->integer('farm_id');
+
+        if (! $farmId) {
+            return $this->errorResponse('farm_id is required.', 422);
         }
 
-        $farmId = $this->selectedFarm($request)->id;
-        $tanks = Tank::where('farm_id', $farmId)->pluck('id');
-        $logs = PhDownLog::whereIn('tank_id', $tanks)
+        $tankIds = Tank::where('farm_id', $farmId)->pluck('id');
+        $logs = PhDownLog::whereIn('tank_id', $tankIds)
             ->with(['tank', 'user'])
             ->latest('log_date')
             ->paginate(20);
 
-        return view('ph-down-log.index', compact('logs'));
+        return $this->paginatedResponse($logs);
     }
 
-    public function create(Request $request): View
+    public function store(Request $request): JsonResponse
     {
-        if (! $this->hasFarm($request)) {
-            return view('farm.no-farm');
-        }
-
-        $farmId = $this->selectedFarm($request)->id;
-        $tanks = Tank::where('farm_id', $farmId)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
-        return view('ph-down-log.create', compact('tanks'));
-    }
-
-    public function store(Request $request): RedirectResponse
-    {
-        if (! $this->hasFarm($request)) {
-            return redirect()->route('farm.create');
-        }
-
         $validated = $request->validate([
             'tank_id' => 'required|exists:tanks,id',
             'log_date' => 'required|date',
@@ -56,24 +37,19 @@ class PhDownLogController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        PhDownLog::create($validated + ['user_id' => auth()->id()]);
+        $log = PhDownLog::create($validated + ['user_id' => $request->user()->id]);
 
-        return redirect()->route('ph-down-log.index')
-            ->with('success', 'Data pH Down berhasil disimpan.');
+        return $this->successResponse(['ph_down' => $log], 'Data pH Down berhasil disimpan.', 201);
     }
 
-    public function edit(Request $request, PhDownLog $phDownLog): View
+    public function show(PhDownLog $phDownLog): JsonResponse
     {
-        $farmId = $request->session()->get('selected_farm_id');
-        $tanks = Tank::where('farm_id', $farmId)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $phDownLog->load(['tank', 'user']);
 
-        return view('ph-down-log.edit', compact('phDownLog', 'tanks'));
+        return $this->successResponse(['ph_down' => $phDownLog]);
     }
 
-    public function update(Request $request, PhDownLog $phDownLog): RedirectResponse
+    public function update(Request $request, PhDownLog $phDownLog): JsonResponse
     {
         $validated = $request->validate([
             'tank_id' => 'required|exists:tanks,id',
@@ -86,15 +62,13 @@ class PhDownLogController extends Controller
 
         $phDownLog->update($validated);
 
-        return redirect()->route('ph-down-log.index')
-            ->with('success', 'Data pH Down berhasil diperbarui.');
+        return $this->successResponse(['ph_down' => $phDownLog], 'Data pH Down berhasil diperbarui.');
     }
 
-    public function destroy(PhDownLog $phDownLog): RedirectResponse
+    public function destroy(PhDownLog $phDownLog): JsonResponse
     {
         $phDownLog->delete();
 
-        return redirect()->route('ph-down-log.index')
-            ->with('success', 'Data pH Down berhasil dihapus.');
+        return $this->successResponse(null, 'Data pH Down berhasil dihapus.');
     }
 }

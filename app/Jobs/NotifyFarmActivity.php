@@ -42,6 +42,6 @@ class NotifyFarmActivity implements ShouldQueue
         $farm->users()
             ->where('users.id', '!=', $entity->user_id)
             ->get()
-            ->each(fn (User $user) => $push->sendToUser($user, $title, $body, route('daily-monitoring.index')));
+            ->each(fn (User $user) => $push->sendToUser($user, $title, $body, url('/monitoring')));
     }
 }

@@ -21,7 +21,7 @@ class ChatMessageControllerTest extends TestCase
         ChatMessage::factory()->for($session)->create(['role' => 'user', 'content' => 'Halo']);
         ChatMessage::factory()->for($session)->create(['role' => 'assistant', 'content' => 'Hai!']);
 
-        $this->actingAs($user)->getJson("/api/chat/sessions/{$session->id}/messages")
+        $this->actingAs($user)->getJson("/api/v1/chat/sessions/{$session->id}/messages")
             ->assertOk()
             ->assertJsonPath('messages.0.content', 'Halo')
             ->assertJsonPath('messages.1.content', 'Hai!');
@@ -35,7 +35,7 @@ class ChatMessageControllerTest extends TestCase
         ChatMessage::factory()->for($session)->create();
 
         $this->actingAs(User::factory()->create())
-            ->getJson("/api/chat/sessions/{$session->id}/messages")
+            ->getJson("/api/v1/chat/sessions/{$session->id}/messages")
             ->assertNotFound();
     }
 
@@ -50,14 +50,14 @@ class ChatMessageControllerTest extends TestCase
             ],
         ];
 
-        $response = $this->actingAs($user)->postJson('/api/chat/sessions/migrate', $payload);
+        $response = $this->actingAs($user)->postJson('/api/v1/chat/sessions/migrate', $payload);
 
         $response->assertOk()->assertJsonPath('migrated', true);
         $sessionId = $response->json('session.id');
         $this->assertDatabaseHas('chat_messages', ['chat_session_id' => $sessionId, 'role' => 'user', 'content' => 'Apa itu hidroponik?']);
         $this->assertDatabaseHas('chat_messages', ['chat_session_id' => $sessionId, 'role' => 'assistant']);
 
-        $again = $this->actingAs($user)->postJson('/api/chat/sessions/migrate', $payload);
+        $again = $this->actingAs($user)->postJson('/api/v1/chat/sessions/migrate', $payload);
         $again->assertOk()->assertJsonPath('migrated', false);
         $this->assertDatabaseCount('chat_sessions', 1);
     }
@@ -73,7 +73,7 @@ class ChatMessageControllerTest extends TestCase
             ],
         ];
 
-        $response = $this->actingAs($user)->postJson('/api/chat/sessions/migrate', $payload);
+        $response = $this->actingAs($user)->postJson('/api/v1/chat/sessions/migrate', $payload);
 
         $response->assertOk()->assertJsonPath('migrated', true);
         $this->assertDatabaseHas('chat_sessions', [
@@ -87,13 +87,13 @@ class ChatMessageControllerTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->postJson('/api/chat/sessions/migrate', [
+        $this->actingAs($user)->postJson('/api/v1/chat/sessions/migrate', [
             'messages' => [
                 ['role' => 'system', 'content' => 'x'],
             ],
         ])->assertUnprocessable();
 
-        $this->actingAs($user)->postJson('/api/chat/sessions/migrate', [
+        $this->actingAs($user)->postJson('/api/v1/chat/sessions/migrate', [
             'messages' => array_fill(0, 21, ['role' => 'user', 'content' => 'x']),
         ])->assertUnprocessable();
     }
@@ -105,7 +105,7 @@ class ChatMessageControllerTest extends TestCase
         $session = ChatSession::factory()->for($user)->create();
         ChatMessage::factory()->count(3)->for($session)->create();
 
-        $this->actingAs($user)->deleteJson("/api/chat/sessions/{$session->id}/messages")
+        $this->actingAs($user)->deleteJson("/api/v1/chat/sessions/{$session->id}/messages")
             ->assertNoContent();
 
         $this->assertDatabaseCount('chat_messages', 0);

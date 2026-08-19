@@ -3,23 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Models\Farm\ActivityLog;
-use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ActivityLogController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): JsonResponse
     {
-        if (! $this->hasFarm($request)) {
-            return view('farm.no-farm');
+        $farmId = $request->integer('farm_id');
+
+        if (! $farmId) {
+            return $this->errorResponse('farm_id is required.', 422);
         }
 
-        $farmId = $this->selectedFarm($request)->id;
         $logs = ActivityLog::where('farm_id', $farmId)
             ->with(['user', 'staff'])
             ->latest('created_at')
             ->paginate(30);
 
-        return view('activity-logs.index', compact('logs'));
+        return $this->paginatedResponse($logs);
     }
 }
