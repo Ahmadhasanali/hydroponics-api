@@ -21,13 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'staff' => EnsureStaff::class,
             'user' => EnsureUser::class,
         ]);
-        $middleware->redirectGuestsTo(function (Request $request) {
-            if ($request->is('staff*')) {
-                return route('staff.login');
-            }
-
-            return route('login');
-        });
+        $middleware->redirectGuestsTo(fn () => null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
