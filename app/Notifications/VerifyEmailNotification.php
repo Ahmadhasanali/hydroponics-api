@@ -18,11 +18,11 @@ class VerifyEmailNotification extends BaseVerifyEmail
         $url = $this->verificationUrl($notifiable);
 
         return (new MailMessage)
-            ->subject('Verifikasi Email Anda')
-            ->view('email.verify-email', [
-                'url' => $url,
-                'name' => $notifiable->name,
-                'expire' => config('auth.verification.expire', 60),
-            ]);
+            ->subject(__('Verifikasi Email Anda'))
+            ->greeting(__('Halo :name!', ['name' => $notifiable->name]))
+            ->line(__('Klik tombol di bawah untuk memverifikasi alamat email Anda.'))
+            ->action(__('Verifikasi Email'), $url)
+            ->line(__('Tautan ini berlaku selama :count menit.', ['count' => config('auth.verification.expire', 60)]))
+            ->line(__('Jika Anda tidak membuat akun ini, abaikan email ini.'));
     }
 }
