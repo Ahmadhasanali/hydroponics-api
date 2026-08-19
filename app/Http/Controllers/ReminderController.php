@@ -26,23 +26,22 @@ class ReminderController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $farmId = $request->integer('farm_id');
-
-        if (! $farmId) {
-            return $this->errorResponse('farm_id is required.', 422);
-        }
-
-        $farm = Farm::findOrFail($farmId);
-        $this->authorize('view', $farm);
-
         $visibleIds = $this->resolver->visibleReminderIds($request->user());
 
-        $reminders = Reminder::query()
-            ->where('farm_id', $farm->id)
+        $query = Reminder::query()
             ->whereIn('id', $visibleIds)
             ->with('targets.targetable', 'occurrences')
-            ->orderByDesc('starts_at')
-            ->paginate(30);
+            ->with('farm:id,name')
+            ->orderByDesc('starts_at');
+
+        $farmId = $request->integer('farm_id');
+        if ($farmId) {
+            $farm = Farm::findOrFail($farmId);
+            $this->authorize('view', $farm);
+            $query->where('farm_id', $farmId);
+        }
+
+        $reminders = $query->paginate(30);
 
         return $this->paginatedResponse($reminders, 'Daftar reminder.');
     }

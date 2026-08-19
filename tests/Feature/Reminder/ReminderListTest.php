@@ -52,11 +52,22 @@ class ReminderListTest extends TestCase
             ->assertJsonPath('data.0.title', 'Reminder Terlihat');
     }
 
-    public function test_index_requires_farm_id(): void
+    public function test_index_without_farm_id_returns_all_visible_reminders(): void
     {
+        Reminder::factory()->create([
+            'farm_id' => $this->farm->id,
+            'created_by_type' => User::class,
+            'created_by_id' => $this->owner->id,
+            'starts_at' => now()->addDay(),
+            'title' => 'Reminder Global',
+        ]);
+
         $response = $this->actingAs($this->owner)->getJson('/api/v1/reminders');
 
-        $response->assertStatus(422);
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.title', 'Reminder Global');
     }
 
     public function test_index_hides_reminder_from_non_creator_non_target(): void
