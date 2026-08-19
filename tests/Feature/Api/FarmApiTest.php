@@ -117,7 +117,9 @@ class FarmApiTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.farm.id', $farm->id)
             ->assertJsonCount(1, 'data.farm.tanks')
-            ->assertJsonCount(2, 'data.farm.users');
+            ->assertJsonCount(2, 'data.farm.users')
+            ->assertJsonPath('data.farm.users.0.role', 'owner')
+            ->assertJsonPath('data.farm.users.1.role', 'manager');
     }
 
     #[Test]

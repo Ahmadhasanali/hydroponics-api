@@ -34,6 +34,11 @@ class FarmController extends Controller
     {
         $farm->load(['tanks', 'users']);
 
+        $farm->users->each(function ($user) {
+            $user->role = $user->pivot->role;
+            unset($user->pivot);
+        });
+
         return $this->successResponse(['farm' => $farm]);
     }
 

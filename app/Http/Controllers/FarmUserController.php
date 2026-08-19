@@ -23,7 +23,20 @@ class FarmUserController extends Controller
             'staff',
         ]);
 
-        return $this->successResponse(['farm' => $farm]);
+        $members = $farm->users->map(function ($user) {
+            $user->role = $user->pivot->role;
+            unset($user->pivot);
+
+            return $user;
+        });
+
+        return $this->successResponse([
+            'farm' => [
+                'id' => $farm->id,
+                'users' => $members,
+                'staff' => $farm->staff,
+            ],
+        ]);
     }
 
     public function store(StoreFarmUserRequest $request, Farm $farm): JsonResponse
