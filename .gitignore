@@ -44,6 +44,9 @@ android/build/
 android/app/build/
 android/capacitor-cordova-android-plugins/
 
+# Firebase
+storage/app/firebase
+
 # Google/FCM credentials (never commit)
 google-services.json
 android/app/google-services.json
