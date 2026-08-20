@@ -119,6 +119,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Email Verification
+    |--------------------------------------------------------------------------
+    |
+    | These options control how long a verification link is valid for and how
+    | often the system automatically resends the verification email to users
+    | who have not yet verified their email address.
+    |
+    */
+
+    'verification' => [
+        'expire' => env('AUTH_VERIFICATION_EXPIRE', 60),
+        'resend_interval' => env('AUTH_VERIFICATION_RESEND_INTERVAL', 5),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Password Confirmation Timeout
     |--------------------------------------------------------------------------
     |

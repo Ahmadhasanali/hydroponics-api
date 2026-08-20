@@ -82,6 +82,8 @@ class User extends Authenticatable implements MustVerifyEmailContract
      */
     public function sendEmailVerificationNotification(): void
     {
+        $this->forceFill(['verification_sent_at' => now()])->save();
+
         $this->notify(new VerifyEmailNotification);
     }
 
@@ -95,6 +97,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
         return [
             'is_admin' => 'boolean',
             'password' => 'hashed',
+            'verification_sent_at' => 'datetime',
         ];
     }
 }
