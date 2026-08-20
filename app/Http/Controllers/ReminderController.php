@@ -41,6 +41,10 @@ class ReminderController extends Controller
             $query->where('farm_id', $farmId);
         }
 
+        if ($request->boolean('upcoming')) {
+            $query->upcoming();
+        }
+
         $reminders = $query->paginate(30);
 
         return $this->paginatedResponse($reminders, 'Daftar reminder.');

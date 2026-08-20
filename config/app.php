@@ -140,4 +140,8 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'reminders' => [
+        'reappear_days' => (int) env('REMINDER_REAPPEAR_DAYS', 2),
+    ],
+
 ];

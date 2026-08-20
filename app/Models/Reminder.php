@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Enums\RecurrenceType;
+use App\Enums\ReminderStatus;
 use App\Models\Reminder\ReminderOccurrence;
 use App\Models\Reminder\ReminderTarget;
 use Database\Factories\ReminderFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -76,5 +78,33 @@ class Reminder extends Model
     public function recurrenceType(): RecurrenceType
     {
         return RecurrenceType::tryFrom($this->recurrence['type'] ?? RecurrenceType::None->value) ?? RecurrenceType::None;
+    }
+
+    public function scopeUpcoming(Builder $query): Builder
+    {
+        $window = now()->addDays((int) config('reminders.reappear_days', 2));
+
+        return $query
+            ->where('is_active', true)
+            ->where(function (Builder $q) {
+                $q->whereDoesntHave('occurrences')
+                    ->orWhereHas('occurrences', function (Builder $oq) {
+                        $oq->where('status', ReminderStatus::Pending->value)
+                            ->whereNull('notified_at')
+                            ->whereNull('advance_notified_at');
+                    });
+            })
+            ->where(function (Builder $q) use ($window) {
+                $q->whereDoesntHave('occurrences', function (Builder $oq) {
+                    $oq->whereNotNull('notified_at')
+                        ->orWhereNotNull('advance_notified_at');
+                })
+                    ->orWhereHas('occurrences', function (Builder $oq) use ($window) {
+                        $oq->where('status', ReminderStatus::Pending->value)
+                            ->whereNull('notified_at')
+                            ->whereNull('advance_notified_at')
+                            ->where('scheduled_at', '<=', $window);
+                    });
+            });
     }
 }
