@@ -8,6 +8,7 @@ use App\Models\Farm;
 use App\Models\Reminder;
 use App\Models\Reminder\ReminderOccurrence;
 use App\Models\Reminder\ReminderTarget;
+use App\Models\User;
 use App\Services\ReminderRecurrenceService;
 use App\Services\ReminderTargetResolver;
 use Illuminate\Http\JsonResponse;
@@ -160,5 +161,42 @@ class ReminderController extends Controller
         $reminder->delete();
 
         return response()->noContent();
+    }
+
+    public function occurrenceDone(Request $request, Reminder $reminder, ReminderOccurrence $occurrence): JsonResponse
+    {
+        $this->authorizeOccurrence($request->user(), $reminder, $occurrence);
+
+        $occurrence->markDone($request->user()::class, $request->user()->id);
+
+        return $this->successResponse(['occurrence' => $occurrence->refresh()], 'Occurrence ditandai selesai.');
+    }
+
+    public function occurrenceSkip(Request $request, Reminder $reminder, ReminderOccurrence $occurrence): JsonResponse
+    {
+        $this->authorizeOccurrence($request->user(), $reminder, $occurrence);
+
+        $occurrence->markSkipped();
+
+        return $this->successResponse(['occurrence' => $occurrence->refresh()], 'Occurrence dilewati.');
+    }
+
+    private function authorizeOccurrence(User $user, Reminder $reminder, ReminderOccurrence $occurrence): void
+    {
+        if ($occurrence->reminder_id !== $reminder->id) {
+            abort(404);
+        }
+
+        $isCreator = $reminder->created_by_type === User::class
+            && $reminder->created_by_id === $user->id;
+
+        $isTarget = $reminder->targets()
+            ->where('targetable_type', User::class)
+            ->where('targetable_id', $user->id)
+            ->exists();
+
+        if (! $isCreator && ! $isTarget) {
+            abort(403);
+        }
     }
 }

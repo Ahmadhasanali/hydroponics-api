@@ -107,6 +107,8 @@ Route::prefix('v1')->group(function () {
 
         // Reminders
         Route::apiResource('reminders', ReminderController::class);
+        Route::post('reminders/{reminder}/occurrences/{occurrence}/done', [ReminderController::class, 'occurrenceDone']);
+        Route::post('reminders/{reminder}/occurrences/{occurrence}/skip', [ReminderController::class, 'occurrenceSkip']);
     });
 
     // Staff (authenticated)
