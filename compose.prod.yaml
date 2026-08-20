@@ -1,15 +1,17 @@
 services:
-    hydroponic:
+    hydroponic-api:
         build:
             context: .
             dockerfile: docker/Dockerfile.prod
             args:
                 WWWGROUP: "${WWWGROUP:-1000}"
                 WWWUSER: "${WWWUSER:-1000}"
-        image: hydroponic-app:latest
+        image: hydroponic-api:latest
         restart: unless-stopped
         env_file:
             - .env.production
+        volumes:
+            - /home/deploy/.secrets/firebase/service-account.json:/home/deploy/.secrets/firebase/service-account.json:ro
         expose:
             - "80"
         networks:
@@ -17,10 +19,10 @@ services:
             - traefik-public
         labels:
             - "traefik.enable=true"
-            - "traefik.http.routers.hydroponic.rule=Host(`hydroponic.ahmadhasan.my.id`)"
-            - "traefik.http.routers.hydroponic.entrypoints=web"
-            - "traefik.http.routers.hydroponic.middlewares=rate-limit@file"
-            - "traefik.http.services.hydroponic.loadbalancer.server.port=80"
+            - "traefik.http.routers.hydroponic-api.rule=Host(`hydroponic-api.ahmadhasan.my.id`)"
+            - "traefik.http.routers.hydroponic-api.entrypoints=web"
+            - "traefik.http.routers.hydroponic-api.middlewares=rate-limit@file"
+            - "traefik.http.services.hydroponic-api.loadbalancer.server.port=80"
             - "traefik.docker.network=traefik-public"
 
 networks:
