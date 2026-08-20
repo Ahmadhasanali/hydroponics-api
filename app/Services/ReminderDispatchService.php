@@ -102,6 +102,8 @@ class ReminderDispatchService
 
     private function sendToTargets(Reminder $reminder, string $title, string $body, ?string $url = null): void
     {
+        $frontendUrl = rtrim((string) config('app.frontend_url', 'http://localhost:5173'), '/');
+
         foreach ($reminder->targets as $target) {
             $recipient = $target->targetable;
 
@@ -109,11 +111,12 @@ class ReminderDispatchService
                 continue;
             }
 
-            // Staff menggunakan guard staff — arahkan ke kalender staff, bukan
-            // route web farm (yang akan melempar ke login web).
+            // Staff diarahkan ke kalender staff di SPA, user diarahkan ke
+            // detail reminder di SPA. Named route web (farm.reminders.show,
+            // staff.reminders.calendar) tidak ada di API-only app ini.
             $recipientUrl = $recipient instanceof Staff
-                ? route('staff.reminders.calendar')
-                : $url ?? route('farm.reminders.show', [$reminder->farm_id, $reminder->id]);
+                ? $frontendUrl.'/staff/reminders/calendar'
+                : $url ?? $frontendUrl.'/farm/'.$reminder->farm_id.'/reminders/'.$reminder->id;
 
             $this->push->sendToUser($recipient, $title, $body, $recipientUrl);
         }

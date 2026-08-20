@@ -9,7 +9,6 @@ use App\Models\Reminder\ReminderTarget;
 use App\Models\User;
 use App\Services\PushNotificationService;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
-use Illuminate\Routing\UrlGenerator;
 use Mockery;
 use Tests\TestCase;
 
@@ -20,15 +19,6 @@ class DispatchRemindersTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        // Route farm.reminders.show baru didaftarkan di Task 8. Saat test ini
-        // berjalan, resolve named route tersebut lewat URL generator resolver
-        // agar service menerima string URL (route() tidak melempar exception).
-        $this->app->make(UrlGenerator::class)->resolveMissingNamedRoutesUsing(
-            fn (string $name, array $parameters): ?string => $name === 'farm.reminders.show'
-                ? 'http://localhost/farm/reminders/'.$parameters[1]
-                : null,
-        );
     }
 
     private function makeDueReminder(): array
@@ -70,7 +60,7 @@ class DispatchRemindersTest extends TestCase
             Mockery::on(fn (User $user) => $user->is($target)),
             $reminder->title,
             $reminder->body,
-            Mockery::type('string'),
+            config('app.frontend_url').'/farm/'.$reminder->farm_id.'/reminders/'.$reminder->id,
         );
         $this->app->instance(PushNotificationService::class, $push);
 
