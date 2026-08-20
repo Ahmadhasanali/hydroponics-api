@@ -47,7 +47,11 @@ class ReminderUpcomingFilterTest extends TestCase
 
     public function test_upcoming_includes_first_cycle_reminder_before_notification(): void
     {
-        $this->makeReminder(['starts_at' => now()->addDays(10), 'title' => 'Siklus Pertama']);
+        $reminder = $this->makeReminder(['starts_at' => now()->addDays(10), 'title' => 'Siklus Pertama']);
+        ReminderOccurrence::factory()->create([
+            'reminder_id' => $reminder->id,
+            'scheduled_at' => now()->addDays(10),
+        ]);
 
         $response = $this->actingAs($this->owner)->getJson('/api/v1/reminders?upcoming=1');
 

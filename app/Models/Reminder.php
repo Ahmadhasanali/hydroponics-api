@@ -86,13 +86,10 @@ class Reminder extends Model
 
         return $query
             ->where('is_active', true)
-            ->where(function (Builder $q) {
-                $q->whereDoesntHave('occurrences')
-                    ->orWhereHas('occurrences', function (Builder $oq) {
-                        $oq->where('status', ReminderStatus::Pending->value)
-                            ->whereNull('notified_at')
-                            ->whereNull('advance_notified_at');
-                    });
+            ->whereHas('occurrences', function (Builder $q) {
+                $q->where('status', ReminderStatus::Pending->value)
+                    ->whereNull('notified_at')
+                    ->whereNull('advance_notified_at');
             })
             ->where(function (Builder $q) use ($window) {
                 $q->whereDoesntHave('occurrences', function (Builder $oq) {
