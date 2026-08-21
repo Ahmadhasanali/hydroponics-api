@@ -43,7 +43,7 @@ class FarmUserController extends Controller
     {
         $validated = $request->validated();
 
-        $user = User::where('name', $validated['email'])->first();
+        $user = User::where('email', $validated['email'])->first();
 
         if (! $user) {
             return $this->errorResponse('User dengan email tersebut tidak ditemukan.', 422, [

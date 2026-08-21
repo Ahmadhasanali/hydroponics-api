@@ -30,7 +30,7 @@ class StoreFarmUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'exists:users,name'],
+            'email' => ['required', 'string', 'email', 'exists:users,email'],
         ];
     }
 }

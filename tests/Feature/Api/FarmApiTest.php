@@ -258,7 +258,7 @@ class FarmApiTest extends TestCase
         $this->attach($owner, $farm, 'owner');
 
         $response = $this->actingAs($owner)->postJson("/api/v1/farms/{$farm->id}/members", [
-            'email' => $newMember->name,
+            'email' => $newMember->email,
         ]);
 
         $response->assertStatus(201)
@@ -270,6 +270,53 @@ class FarmApiTest extends TestCase
             'user_id' => $newMember->id,
             'role' => 'manager',
         ]);
+    }
+
+    #[Test]
+    public function member_store_fails_if_email_not_registered(): void
+    {
+        $owner = User::factory()->create();
+        $farm = Farm::factory()->create(['created_by' => $owner->id]);
+        $this->attach($owner, $farm, 'owner');
+
+        $response = $this->actingAs($owner)->postJson("/api/v1/farms/{$farm->id}/members", [
+            'email' => 'tidakada@example.com',
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('email');
+    }
+
+    #[Test]
+    public function member_store_fails_if_already_member(): void
+    {
+        $owner = User::factory()->create();
+        $existing = User::factory()->create();
+        $farm = Farm::factory()->create(['created_by' => $owner->id]);
+        $this->attach($owner, $farm, 'owner');
+        $this->attach($existing, $farm, 'manager');
+
+        $response = $this->actingAs($owner)->postJson("/api/v1/farms/{$farm->id}/members", [
+            'email' => $existing->email,
+        ]);
+
+        $response->assertStatus(422)->assertJsonPath('errors.email.0', 'User tersebut sudah menjadi anggota farm.');
+    }
+
+    #[Test]
+    public function member_store_denies_operator(): void
+    {
+        $owner = User::factory()->create();
+        $operator = User::factory()->create();
+        $newUser = User::factory()->create();
+        $farm = Farm::factory()->create(['created_by' => $owner->id]);
+        $this->attach($owner, $farm, 'owner');
+        $this->attach($operator, $farm, 'operator');
+
+        $response = $this->actingAs($operator)->postJson("/api/v1/farms/{$farm->id}/members", [
+            'email' => $newUser->email,
+        ]);
+
+        $response->assertStatus(403);
     }
 
     #[Test]
