@@ -39,7 +39,7 @@ class Farm extends Model
     {
         return $this->belongsToMany(User::class, 'farm_users')
             ->using(Farm\FarmUser::class)
-            ->withPivot('role')
+            ->withPivot('role', 'id')
             ->withTimestamps();
     }
 

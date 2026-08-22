@@ -33,4 +33,14 @@ class StoreFarmUserRequest extends FormRequest
             'email' => ['required', 'string', 'email', 'exists:users,email'],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'email.exists' => 'User dengan email tersebut tidak ditemukan.',
+        ];
+    }
 }
