@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ReminderStatus;
 use App\Models\Farm\Staff;
 use App\Models\Reminder;
+use App\Models\Reminder\ReminderNotificationDelivery;
 use App\Models\Reminder\ReminderOccurrence;
 
 class ReminderDispatchService
@@ -35,8 +36,11 @@ class ReminderDispatchService
 
                 $this->sendToTargets(
                     $reminder,
+                    $occurrence,
                     "{$reminder->title} — sebentar lagi",
                     "Pengingat awal: {$reminder->body}",
+                    null,
+                    'advance',
                 );
 
                 $occurrence->update(['advance_notified_at' => now()]);
@@ -55,11 +59,7 @@ class ReminderDispatchService
             ->each(function (ReminderOccurrence $occurrence) {
                 $reminder = $occurrence->reminder;
 
-                $this->sendToTargets(
-                    $reminder,
-                    $reminder->title,
-                    $reminder->body,
-                );
+                $this->sendToTargets($reminder, $occurrence, $reminder->title, $reminder->body);
 
                 $occurrence->update(['notified_at' => now()]);
 
@@ -100,7 +100,7 @@ class ReminderDispatchService
         ]);
     }
 
-    private function sendToTargets(Reminder $reminder, string $title, string $body, ?string $url = null): void
+    private function sendToTargets(Reminder $reminder, ReminderOccurrence $occurrence, string $title, string $body, ?string $url = null, string $kind = 'main'): void
     {
         $frontendUrl = rtrim((string) config('app.frontend_url', 'http://localhost:5173'), '/');
 
@@ -119,6 +119,15 @@ class ReminderDispatchService
                 : $url ?? $frontendUrl.'/farm/'.$reminder->farm_id.'/reminders/'.$reminder->id;
 
             $this->push->sendToUser($recipient, $title, $body, $recipientUrl);
+
+            ReminderNotificationDelivery::query()->create([
+                'reminder_id' => $reminder->id,
+                'occurrence_id' => $occurrence->id,
+                'notifiable_type' => $recipient::class,
+                'notifiable_id' => $recipient->id,
+                'kind' => $kind,
+                'sent_at' => now(),
+            ]);
         }
     }
 }
