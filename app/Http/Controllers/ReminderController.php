@@ -6,6 +6,7 @@ use App\Http\Requests\Reminder\StoreReminderRequest;
 use App\Http\Requests\Reminder\UpdateReminderRequest;
 use App\Models\Farm;
 use App\Models\Reminder;
+use App\Models\Reminder\ReminderNotificationDelivery;
 use App\Models\Reminder\ReminderOccurrence;
 use App\Models\Reminder\ReminderTarget;
 use App\Models\User;
@@ -179,6 +180,21 @@ class ReminderController extends Controller
         $occurrence->markSkipped();
 
         return $this->successResponse(['occurrence' => $occurrence->refresh()], 'Occurrence dilewati.');
+    }
+
+    public function acknowledge(Request $request, Reminder $reminder, ReminderOccurrence $occurrence): JsonResponse
+    {
+        $this->authorizeOccurrence($request->user(), $reminder, $occurrence);
+
+        ReminderNotificationDelivery::query()
+            ->where('occurrence_id', $occurrence->id)
+            ->where('notifiable_type', $request->user()::class)
+            ->where('notifiable_id', $request->user()->id)
+            ->whereNull('opened_at')
+            ->where('sent_at', '<=', now())
+            ->update(['opened_at' => now()]);
+
+        return $this->successResponse(null, 'Notifikasi ditandai telah dibaca.');
     }
 
     private function authorizeOccurrence(User $user, Reminder $reminder, ReminderOccurrence $occurrence): void

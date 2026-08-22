@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Staff;
 use App\Http\Controllers\Controller;
 use App\Models\Farm\Staff;
 use App\Models\Reminder;
+use App\Models\Reminder\ReminderNotificationDelivery;
 use App\Models\Reminder\ReminderOccurrence;
 use App\Models\Reminder\ReminderTarget;
 use App\Services\ReminderRecurrenceService;
@@ -224,5 +225,38 @@ class StaffReminderController extends Controller
         $occurrence->markSkipped();
 
         return $this->successResponse(null, 'Reminder dilewati.');
+    }
+
+    public function acknowledge(Request $request, ReminderOccurrence $occurrence): JsonResponse
+    {
+        $staff = $request->user();
+
+        if ($occurrence->reminder->farm_id !== $staff->farm_id) {
+            return $this->errorResponse('Reminder tidak ditemukan.', 403);
+        }
+
+        $canAcknowledge = $occurrence->reminder->created_by_type === Staff::class
+            && $occurrence->reminder->created_by_id === $staff->id;
+
+        if (! $canAcknowledge) {
+            $canAcknowledge = $occurrence->reminder->targets()
+                ->where('targetable_type', Staff::class)
+                ->where('targetable_id', $staff->id)
+                ->exists();
+        }
+
+        if (! $canAcknowledge) {
+            return $this->errorResponse('Reminder tidak ditemukan.', 403);
+        }
+
+        ReminderNotificationDelivery::query()
+            ->where('occurrence_id', $occurrence->id)
+            ->where('notifiable_type', Staff::class)
+            ->where('notifiable_id', $staff->id)
+            ->whereNull('opened_at')
+            ->where('sent_at', '<=', now())
+            ->update(['opened_at' => now()]);
+
+        return $this->successResponse(null, 'Notifikasi ditandai telah dibaca.');
     }
 }

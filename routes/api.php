@@ -109,6 +109,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('reminders', ReminderController::class);
         Route::post('reminders/{reminder}/occurrences/{occurrence}/done', [ReminderController::class, 'occurrenceDone']);
         Route::post('reminders/{reminder}/occurrences/{occurrence}/skip', [ReminderController::class, 'occurrenceSkip']);
+        Route::post('reminders/{reminder}/occurrences/{occurrence}/acknowledge', [ReminderController::class, 'acknowledge']);
     });
 
     // Staff (authenticated)
@@ -142,6 +143,7 @@ Route::prefix('v1')->group(function () {
         Route::get('staff/reminders/calendar', [StaffReminderController::class, 'calendar']);
         Route::post('staff/reminders/occurrences/{occurrence}/done', [StaffReminderController::class, 'occurrenceDone']);
         Route::post('staff/reminders/occurrences/{occurrence}/skip', [StaffReminderController::class, 'occurrenceSkip']);
+        Route::post('staff/reminders/occurrences/{occurrence}/acknowledge', [StaffReminderController::class, 'acknowledge']);
 
         // Reports
         Route::get('staff/reports/monitoring', [StaffReportController::class, 'monitoring']);
