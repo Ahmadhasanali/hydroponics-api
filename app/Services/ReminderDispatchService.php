@@ -7,6 +7,7 @@ use App\Models\Farm\Staff;
 use App\Models\Reminder;
 use App\Models\Reminder\ReminderNotificationDelivery;
 use App\Models\Reminder\ReminderOccurrence;
+use App\Models\User;
 
 class ReminderDispatchService
 {
@@ -19,6 +20,7 @@ class ReminderDispatchService
     {
         $this->dispatchAdvanceNotifications();
         $this->dispatchMainNotifications();
+        $this->dispatchAcknowledgementResends();
     }
 
     private function dispatchAdvanceNotifications(): void
@@ -102,8 +104,6 @@ class ReminderDispatchService
 
     private function sendToTargets(Reminder $reminder, ReminderOccurrence $occurrence, string $title, string $body, ?string $url = null, string $kind = 'main'): void
     {
-        $frontendUrl = rtrim((string) config('app.frontend_url', 'http://localhost:5173'), '/');
-
         foreach ($reminder->targets as $target) {
             $recipient = $target->targetable;
 
@@ -111,12 +111,9 @@ class ReminderDispatchService
                 continue;
             }
 
-            // Staff diarahkan ke kalender staff di SPA, user diarahkan ke
-            // detail reminder di SPA. Named route web (farm.reminders.show,
-            // staff.reminders.calendar) tidak ada di API-only app ini.
-            $recipientUrl = $recipient instanceof Staff
-                ? $frontendUrl.'/staff/reminders/calendar'
-                : $url ?? $frontendUrl.'/farm/'.$reminder->farm_id.'/reminders/'.$reminder->id;
+            // Named route web (farm.reminders.show, staff.reminders.calendar)
+            // tidak ada di API-only app ini.
+            $recipientUrl = $url ?? $this->recipientUrl($reminder, $recipient);
 
             $this->push->sendToUser($recipient, $title, $body, $recipientUrl);
 
@@ -129,5 +126,68 @@ class ReminderDispatchService
                 'sent_at' => now(),
             ]);
         }
+    }
+
+    private function recipientUrl(Reminder $reminder, User|Staff $recipient): string
+    {
+        $frontendUrl = rtrim((string) config('app.frontend_url', 'http://localhost:5173'), '/');
+
+        // Staff diarahkan ke kalender staff di SPA, user diarahkan ke detail
+        // reminder di SPA.
+        return $recipient instanceof Staff
+            ? $frontendUrl.'/staff/reminders/calendar'
+            : $frontendUrl.'/farm/'.$reminder->farm_id.'/reminders/'.$reminder->id;
+    }
+
+    private function dispatchAcknowledgementResends(): void
+    {
+        $cutoff = now()->subMinutes((int) config('reminders.resend_after_minutes', 30));
+        $table = (new ReminderNotificationDelivery)->getTable();
+
+        ReminderNotificationDelivery::query()
+            ->where('kind', 'main')
+            ->whereNull('opened_at')
+            ->where('sent_at', '<=', $cutoff)
+            ->whereNotExists(function ($q) use ($table): void {
+                $q->selectRaw('1')
+                    ->from("{$table} as prior")
+                    ->whereColumn('prior.occurrence_id', "{$table}.occurrence_id")
+                    ->whereColumn('prior.notifiable_type', "{$table}.notifiable_type")
+                    ->whereColumn('prior.notifiable_id', "{$table}.notifiable_id")
+                    ->where('prior.kind', 'resend');
+            })
+            ->whereHas('occurrence', function ($q): void {
+                $q->where('status', ReminderStatus::Pending->value)
+                    ->whereNotNull('notified_at');
+            })
+            ->whereHas('reminder', function ($q): void {
+                $q->where('is_active', true);
+            })
+            ->with(['occurrence.reminder', 'notifiable'])
+            ->get()
+            ->each(function (ReminderNotificationDelivery $delivery): void {
+                $reminder = $delivery->occurrence->reminder;
+                $recipient = $delivery->notifiable;
+
+                if (! $recipient instanceof User && ! $recipient instanceof Staff) {
+                    return;
+                }
+
+                $this->push->sendToUser(
+                    $recipient,
+                    $reminder->title,
+                    $reminder->body,
+                    $this->recipientUrl($reminder, $recipient),
+                );
+
+                ReminderNotificationDelivery::query()->create([
+                    'reminder_id' => $reminder->id,
+                    'occurrence_id' => $delivery->occurrence_id,
+                    'notifiable_type' => $recipient::class,
+                    'notifiable_id' => $recipient->id,
+                    'kind' => 'resend',
+                    'sent_at' => now(),
+                ]);
+            });
     }
 }

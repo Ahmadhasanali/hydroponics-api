@@ -4,6 +4,7 @@ namespace Tests\Feature\Commands;
 
 use App\Models\Farm;
 use App\Models\Reminder;
+use App\Models\Reminder\ReminderNotificationDelivery;
 use App\Models\Reminder\ReminderOccurrence;
 use App\Models\Reminder\ReminderTarget;
 use App\Models\User;
@@ -182,5 +183,107 @@ class DispatchRemindersTest extends TestCase
             'occurrence_id' => $occurrence->id,
             'kind' => 'advance',
         ]);
+    }
+
+    public function test_unacknowledged_main_delivery_is_resent_once(): void
+    {
+        ['reminder' => $reminder, 'target' => $target] = $this->makeDueReminder();
+        $occurrence = ReminderOccurrence::query()->where('reminder_id', $reminder->id)->firstOrFail();
+        $occurrence->update(['notified_at' => now()]);
+
+        ReminderNotificationDelivery::factory()->create([
+            'reminder_id' => $reminder->id,
+            'occurrence_id' => $occurrence->id,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $target->id,
+            'kind' => 'main',
+            'opened_at' => null,
+            'sent_at' => now()->subMinutes(31),
+        ]);
+
+        $push = Mockery::mock(PushNotificationService::class);
+        $push->shouldReceive('sendToUser')->once();
+        $this->app->instance(PushNotificationService::class, $push);
+
+        $this->artisan('reminders:dispatch')->assertExitCode(0);
+
+        $this->assertSame(1, ReminderNotificationDelivery::query()->where('kind', 'resend')->count());
+
+        $this->artisan('reminders:dispatch')->assertExitCode(0);
+        $this->assertSame(1, ReminderNotificationDelivery::query()->where('kind', 'resend')->count());
+    }
+
+    public function test_opened_delivery_not_resent(): void
+    {
+        ['reminder' => $reminder, 'target' => $target] = $this->makeDueReminder();
+        $occurrence = ReminderOccurrence::query()->where('reminder_id', $reminder->id)->firstOrFail();
+        $occurrence->update(['notified_at' => now()]);
+
+        ReminderNotificationDelivery::factory()->create([
+            'reminder_id' => $reminder->id,
+            'occurrence_id' => $occurrence->id,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $target->id,
+            'kind' => 'main',
+            'opened_at' => now(),
+            'sent_at' => now()->subMinutes(31),
+        ]);
+
+        $push = Mockery::mock(PushNotificationService::class);
+        $push->shouldNotReceive('sendToUser');
+        $this->app->instance(PushNotificationService::class, $push);
+
+        $this->artisan('reminders:dispatch')->assertExitCode(0);
+
+        $this->assertSame(0, ReminderNotificationDelivery::query()->where('kind', 'resend')->count());
+    }
+
+    public function test_recently_sent_delivery_not_resent(): void
+    {
+        ['reminder' => $reminder, 'target' => $target] = $this->makeDueReminder();
+        $occurrence = ReminderOccurrence::query()->where('reminder_id', $reminder->id)->firstOrFail();
+        $occurrence->update(['notified_at' => now()]);
+
+        ReminderNotificationDelivery::factory()->create([
+            'reminder_id' => $reminder->id,
+            'occurrence_id' => $occurrence->id,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $target->id,
+            'kind' => 'main',
+            'opened_at' => null,
+            'sent_at' => now()->subMinutes(10),
+        ]);
+
+        $push = Mockery::mock(PushNotificationService::class);
+        $push->shouldNotReceive('sendToUser');
+        $this->app->instance(PushNotificationService::class, $push);
+
+        $this->artisan('reminders:dispatch')->assertExitCode(0);
+        $this->assertSame(0, ReminderNotificationDelivery::query()->where('kind', 'resend')->count());
+    }
+
+    public function test_done_occurrence_not_resent(): void
+    {
+        ['reminder' => $reminder, 'target' => $target] = $this->makeDueReminder();
+        $occurrence = ReminderOccurrence::query()->where('reminder_id', $reminder->id)->firstOrFail();
+        $occurrence->update(['notified_at' => now()]);
+        $occurrence->markDone(User::class, $target->id);
+
+        ReminderNotificationDelivery::factory()->create([
+            'reminder_id' => $reminder->id,
+            'occurrence_id' => $occurrence->id,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $target->id,
+            'kind' => 'main',
+            'opened_at' => null,
+            'sent_at' => now()->subMinutes(31),
+        ]);
+
+        $push = Mockery::mock(PushNotificationService::class);
+        $push->shouldNotReceive('sendToUser');
+        $this->app->instance(PushNotificationService::class, $push);
+
+        $this->artisan('reminders:dispatch')->assertExitCode(0);
+        $this->assertSame(0, ReminderNotificationDelivery::query()->where('kind', 'resend')->count());
     }
 }
