@@ -104,4 +104,19 @@ class Reminder extends Model
                     });
             });
     }
+
+    public function scopeHistory(Builder $query): Builder
+    {
+        return $query
+            ->whereDoesntHave('occurrences', function (Builder $q): void {
+                $q->where('status', ReminderStatus::Pending->value)
+                    ->whereNull('notified_at');
+            })
+            ->whereHas('occurrences', function (Builder $q): void {
+                $q->where(function (Builder $oq): void {
+                    $oq->whereNotNull('notified_at')
+                        ->orWhereIn('status', [ReminderStatus::Done->value, ReminderStatus::Skipped->value]);
+                });
+            });
+    }
 }

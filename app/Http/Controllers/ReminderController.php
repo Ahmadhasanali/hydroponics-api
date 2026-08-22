@@ -43,7 +43,9 @@ class ReminderController extends Controller
             $query->where('farm_id', $farmId);
         }
 
-        if ($request->boolean('upcoming')) {
+        if ($request->boolean('history')) {
+            $query->history();
+        } elseif ($request->boolean('upcoming')) {
             $query->upcoming();
         }
 
