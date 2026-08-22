@@ -35,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('notify:daily-monitoring')->dailyAt(config('app.daily_reminder_hour', '08:00'));
         $schedule->command('app:sync-disposable-email-domains')->cron('0 0 1 */6 *');
         $schedule->command('reminders:dispatch')->everyMinute();
+        $schedule->command('reminders:prune-sent')->dailyAt('03:00');
         $schedule->command('email:resend-unverified')->everyMinute();
     })
     ->create();
