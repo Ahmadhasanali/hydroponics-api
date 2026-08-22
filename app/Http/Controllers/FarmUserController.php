@@ -25,6 +25,7 @@ class FarmUserController extends Controller
 
         $members = $farm->users->map(function ($user) {
             $user->role = $user->pivot->role;
+            $user->farmUserId = $user->pivot->id;
             unset($user->pivot);
 
             return $user;
