@@ -32,7 +32,12 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('chat:purge-deleted-sessions')->hourly();
-        $schedule->command('notify:daily-monitoring')->dailyAt(config('app.daily_reminder_hour', '08:00'));
+
+        // Pengingat monitoring harian hanya aktif jika DAILY_REMINDER_HOUR diisi
+        // (contoh: 08:00). Kosongkan/nonaktifkan di .env untuk mematikannya.
+        if ($dailyReminderHour = config('app.daily_reminder_hour')) {
+            $schedule->command('notify:daily-monitoring')->dailyAt($dailyReminderHour);
+        }
         $schedule->command('app:sync-disposable-email-domains')->cron('0 0 1 */6 *');
         $schedule->command('reminders:dispatch')->everyMinute();
         $schedule->command('reminders:prune-sent')->dailyAt('03:00');
