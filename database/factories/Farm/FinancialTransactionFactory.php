@@ -53,4 +53,9 @@ class FinancialTransactionFactory extends Factory
     {
         return $this->state(fn () => ['source' => 'telegram']);
     }
+
+    public function pending(): static
+    {
+        return $this->state(fn () => ['status' => 'pending_approval']);
+    }
 }
