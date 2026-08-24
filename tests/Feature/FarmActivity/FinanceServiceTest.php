@@ -82,6 +82,26 @@ class FinanceServiceTest extends TestCase
         $this->assertSame(50000.0, $summary['series'][0]['expense']);
     }
 
+    public function test_weekly_grouping_buckets_by_week_start(): void
+    {
+        $this->addExpense('2026-08-03', 20000);
+        $this->addExpense('2026-08-05', 30000);
+        $this->addExpense('2026-08-10', 5000);
+
+        $summary = app(FinanceService::class)->summary(
+            $this->farm,
+            Carbon::parse('2026-08-01'),
+            Carbon::parse('2026-08-31'),
+            'week',
+        );
+
+        $this->assertCount(2, $summary['series']);
+        $this->assertSame('2026-08-03', $summary['series'][0]['period']);
+        $this->assertSame(50000.0, $summary['series'][0]['expense']);
+        $this->assertSame('2026-08-10', $summary['series'][1]['period']);
+        $this->assertSame(5000.0, $summary['series'][1]['expense']);
+    }
+
     public function test_soft_deleted_and_pending_are_excluded(): void
     {
         $this->addExpense('2026-08-05', 70000)->delete();
