@@ -47,4 +47,17 @@ class FarmPolicy
     {
         return $this->delete($user, $farm);
     }
+
+    public function viewFinance(User $user, Farm $farm): bool
+    {
+        return $farm->users()
+            ->where('user_id', $user->id)
+            ->wherePivotIn('role', ['owner', 'manager'])
+            ->exists();
+    }
+
+    public function manageFinance(User $user, Farm $farm): bool
+    {
+        return $this->viewFinance($user, $farm);
+    }
 }
