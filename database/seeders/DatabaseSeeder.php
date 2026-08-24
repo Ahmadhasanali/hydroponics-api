@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             User\UserSeeder::class,
             User\UserAdminSeeder::class,
             FarmSeeder::class,
+            FinancialCategorySeeder::class,
         ]);
     }
 }
