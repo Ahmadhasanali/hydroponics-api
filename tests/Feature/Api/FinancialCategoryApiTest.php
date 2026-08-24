@@ -106,4 +106,40 @@ class FinancialCategoryApiTest extends TestCase
             ->postJson('/financial-categories', ['farm_id' => $this->farm->id, 'name' => 'X', 'type' => 'expense'])
             ->assertForbidden();
     }
+
+    public function test_owner_of_other_farm_cannot_update_or_delete_custom_category(): void
+    {
+        $otherOwner = User::factory()->create();
+        $otherFarm = Farm::factory()->create();
+        $otherFarm->users()->attach($otherOwner->id, ['role' => 'owner']);
+        $custom = FinancialCategory::factory()->forFarm($this->farm->id)->create();
+
+        $this->actingAs($otherOwner)
+            ->putJson("/financial-categories/{$custom->id}", ['name' => 'Baru'])
+            ->assertForbidden();
+
+        $this->actingAs($otherOwner)
+            ->deleteJson("/financial-categories/{$custom->id}")
+            ->assertForbidden();
+
+        $this->assertTrue((bool) $custom->fresh()->is_active);
+    }
+
+    public function test_non_member_cannot_view_farm_categories(): void
+    {
+        $outsider = User::factory()->create();
+
+        $this->actingAs($outsider)
+            ->getJson('/financial-categories?farm_id='.$this->farm->id)
+            ->assertForbidden();
+    }
+
+    public function test_destroy_global_category_is_not_found(): void
+    {
+        $global = FinancialCategory::whereNull('farm_id')->firstOrFail();
+
+        $this->actingAs($this->owner)
+            ->deleteJson("/financial-categories/{$global->id}")
+            ->assertNotFound();
+    }
 }
