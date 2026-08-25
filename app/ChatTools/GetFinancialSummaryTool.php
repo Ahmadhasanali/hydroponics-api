@@ -41,8 +41,16 @@ class GetFinancialSummaryTool extends BaseTool
             return ['error' => 'Anda belum tergabung di farm mana pun.'];
         }
 
-        $farmId = (int) ($args['farm_id'] ?? 0);
-        if ($farmId > 0) {
+        $farmId = null;
+        if (array_key_exists('farm_id', $args)) {
+            if (! is_numeric($args['farm_id']) || (int) $args['farm_id'] < 1) {
+                return ['error' => 'Parameter farm_id tidak valid.'];
+            }
+
+            $farmId = (int) $args['farm_id'];
+        }
+
+        if ($farmId !== null) {
             $farms = $farms->filter(fn (Farm $farm): bool => $farm->id === $farmId);
 
             if ($farms->isEmpty()) {

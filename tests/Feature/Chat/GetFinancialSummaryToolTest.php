@@ -28,12 +28,12 @@ class GetFinancialSummaryToolTest extends TestCase
         $this->farm->users()->attach($this->owner->id, ['role' => 'owner']);
     }
 
-    private function addIncome(float $amount): void
+    private function addIncome(float $amount, ?string $date = null): void
     {
         FinancialTransaction::factory()->income()->create([
             'farm_id' => $this->farm->id,
             'category_id' => FinancialCategory::factory()->forFarm($this->farm->id)->income()->create()->id,
-            'transaction_date' => now()->toDateString(),
+            'transaction_date' => $date ?? now()->toDateString(),
             'amount' => $amount,
         ]);
     }
@@ -68,6 +68,52 @@ class GetFinancialSummaryToolTest extends TestCase
         $result = (new GetFinancialSummaryTool)->handle(['farm_id' => $foreign->id], $this->owner);
 
         $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_rejects_non_numeric_farm_id(): void
+    {
+        $result = (new GetFinancialSummaryTool)->handle(['farm_id' => 'abc'], $this->owner);
+
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_rejects_negative_farm_id(): void
+    {
+        $result = (new GetFinancialSummaryTool)->handle(['farm_id' => -5], $this->owner);
+
+        $this->assertArrayHasKey('error', $result);
+    }
+
+    public function test_last_month_period_uses_last_month_range(): void
+    {
+        $base = now()->subMonthNoOverflow();
+        $this->addIncome(50000, $base->copy()->startOfMonth()->toDateString());
+        $this->addIncome(75000);
+
+        $result = (new GetFinancialSummaryTool)->handle(['period' => 'last_month'], $this->owner);
+
+        $this->assertArrayHasKey('data', $result);
+        $this->assertSame($base->copy()->startOfMonth()->toDateString(), $result['data']['from']);
+        $this->assertSame($base->copy()->endOfMonth()->toDateString(), $result['data']['to']);
+        $this->assertSame(50000.0, $result['data']['income']);
+    }
+
+    public function test_from_to_override_ignores_period(): void
+    {
+        $target = now()->subDays(3);
+        $this->addIncome(20000, $target->toDateString());
+        $this->addIncome(75000);
+
+        $result = (new GetFinancialSummaryTool)->handle([
+            'period' => 'last_month',
+            'from' => $target->toDateString(),
+            'to' => $target->toDateString(),
+        ], $this->owner);
+
+        $this->assertArrayHasKey('data', $result);
+        $this->assertSame($target->toDateString(), $result['data']['from']);
+        $this->assertSame($target->toDateString(), $result['data']['to']);
+        $this->assertSame(20000.0, $result['data']['income']);
     }
 
     public function test_tool_is_auto_discovered_by_service(): void
