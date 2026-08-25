@@ -114,7 +114,7 @@ Route::prefix('v1')->group(function () {
         Route::post('reminders/{reminder}/occurrences/{occurrence}/acknowledge', [ReminderController::class, 'acknowledge']);
 
         // Financial Categories
-        Route::apiResource('financial-categories', FinancialCategoryController::class);
+        Route::apiResource('financial-categories', FinancialCategoryController::class)->only(['index', 'store', 'update', 'destroy']);
 
         // Financial Transactions
         Route::get('financial-transactions/summary', [FinancialTransactionController::class, 'summary']);

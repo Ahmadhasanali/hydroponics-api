@@ -60,6 +60,19 @@ class FinancialCategoryController extends Controller
         $farm = Farm::findOrFail($financialCategory->farm_id);
         $this->authorize('manageFinance', $farm);
 
+        $duplicate = FinancialCategory::query()
+            ->forFarm($farm->id)
+            ->where('type', $financialCategory->type)
+            ->where('name', $validated['name'])
+            ->whereKeyNot($financialCategory->id)
+            ->exists();
+
+        if ($duplicate) {
+            return $this->errorResponse('Kategori dengan nama tersebut sudah ada.', 422, [
+                'name' => ['Kategori dengan nama tersebut sudah ada.'],
+            ]);
+        }
+
         $financialCategory->update(['name' => $validated['name']]);
 
         return $this->successResponse(['category' => $financialCategory], 'Kategori berhasil diperbarui.');

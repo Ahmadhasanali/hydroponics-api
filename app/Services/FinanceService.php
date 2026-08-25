@@ -16,7 +16,7 @@ class FinanceService
             ->where('farm_id', $farm->id)
             ->where('status', 'approved')
             ->whereBetween('transaction_date', [$from->toDateString(), $to->toDateString()])
-            ->with('category')
+            ->with(['category' => fn ($q) => $q->withTrashed()])
             ->get();
 
         $income = (float) $transactions->where('type', 'income')->sum('amount');
@@ -34,10 +34,10 @@ class FinanceService
             ->all();
 
         $categories = $transactions
-            ->groupBy(fn (FinancialTransaction $t): string => $t->category->name.'|'.$t->type)
+            ->groupBy(fn (FinancialTransaction $t): string => ($t->category?->name ?? 'Kategori dihapus').'|'.($t->category?->type ?? $t->type))
             ->map(fn ($group): array => [
-                'category' => $group->first()->category->name,
-                'type' => $group->first()->type,
+                'category' => $group->first()->category?->name ?? 'Kategori dihapus',
+                'type' => $group->first()->category?->type ?? $group->first()->type,
                 'total' => round((float) $group->sum('amount'), 2),
             ])
             ->sortByDesc('total')

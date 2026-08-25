@@ -58,7 +58,11 @@ class GetFinancialSummaryTool extends BaseTool
             }
         }
 
-        [$from, $to] = $this->resolveRange($args);
+        try {
+            [$from, $to] = $this->resolveRange($args);
+        } catch (\Throwable) {
+            return ['error' => 'Format tanggal tidak valid. Gunakan YYYY-MM-DD.'];
+        }
         $service = app(FinanceService::class);
 
         $payload = $farms
@@ -76,10 +80,19 @@ class GetFinancialSummaryTool extends BaseTool
     private function resolveRange(array $args): array
     {
         if (! empty($args['from']) || ! empty($args['to'])) {
-            return [
-                Carbon::parse($args['from'] ?? now()->startOfMonth()),
-                Carbon::parse($args['to'] ?? now()),
-            ];
+            try {
+                $from = Carbon::parse($args['from'] ?? now()->startOfMonth());
+            } catch (\Throwable) {
+                throw new \InvalidArgumentException('Format tanggal tidak valid. Gunakan YYYY-MM-DD.');
+            }
+
+            try {
+                $to = Carbon::parse($args['to'] ?? now());
+            } catch (\Throwable) {
+                throw new \InvalidArgumentException('Format tanggal tidak valid. Gunakan YYYY-MM-DD.');
+            }
+
+            return [$from, $to];
         }
 
         if (($args['period'] ?? 'this_month') === 'last_month') {
