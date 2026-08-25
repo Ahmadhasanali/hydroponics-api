@@ -11,6 +11,7 @@ use App\Http\Controllers\Farm\FarmController;
 use App\Http\Controllers\Farm\FarmStaffController;
 use App\Http\Controllers\FarmUserController;
 use App\Http\Controllers\FinancialCategoryController;
+use App\Http\Controllers\FinancialTransactionController;
 use App\Http\Controllers\NutrientAdditionController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PhDownLogController;
@@ -114,6 +115,10 @@ Route::prefix('v1')->group(function () {
 
         // Financial Categories
         Route::apiResource('financial-categories', FinancialCategoryController::class);
+
+        // Financial Transactions
+        Route::apiResource('financial-transactions', FinancialTransactionController::class)
+            ->parameters(['financial-transactions' => 'financialTransaction']);
     });
 
     // Staff (authenticated)
