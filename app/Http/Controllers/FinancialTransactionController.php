@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Farm;
 use App\Models\Farm\FinancialCategory;
 use App\Models\Farm\FinancialTransaction;
+use App\Services\FinanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
 class FinancialTransactionController extends Controller
@@ -38,6 +40,31 @@ class FinancialTransactionController extends Controller
             ->paginate(20);
 
         return $this->paginatedResponse($transactions);
+    }
+
+    public function summary(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'farm_id' => 'required|integer|exists:farms,id',
+            'from' => 'nullable|date',
+            'to' => 'nullable|date',
+            'group_by' => 'nullable|in:day,week,month',
+        ]);
+
+        $farm = Farm::findOrFail($validated['farm_id']);
+        $this->authorize('viewFinance', $farm);
+
+        $from = Carbon::parse($validated['from'] ?? now()->subDays(29)->startOfDay());
+        $to = Carbon::parse($validated['to'] ?? now()->endOfDay());
+
+        $summary = app(FinanceService::class)->summary(
+            $farm,
+            $from,
+            $to,
+            $validated['group_by'] ?? 'day',
+        );
+
+        return $this->successResponse(['summary' => $summary]);
     }
 
     public function store(Request $request): JsonResponse

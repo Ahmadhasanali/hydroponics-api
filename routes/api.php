@@ -117,6 +117,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('financial-categories', FinancialCategoryController::class);
 
         // Financial Transactions
+        Route::get('financial-transactions/summary', [FinancialTransactionController::class, 'summary']);
         Route::apiResource('financial-transactions', FinancialTransactionController::class)
             ->parameters(['financial-transactions' => 'financialTransaction']);
     });

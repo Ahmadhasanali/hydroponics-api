@@ -35,6 +35,7 @@ class FinancialTransactionApiTest extends TestCase
         $this->incomeCategory = FinancialCategory::factory()->forFarm($this->farm->id)->income()->create();
 
         Route::prefix('api/v1')->middleware(SubstituteBindings::class)->group(function (): void {
+            Route::get('financial-transactions/summary', [FinancialTransactionController::class, 'summary']);
             Route::apiResource('financial-transactions', FinancialTransactionController::class)
                 ->parameters(['financial-transactions' => 'financialTransaction']);
         });
@@ -164,6 +165,30 @@ class FinancialTransactionApiTest extends TestCase
             'id' => $tx->id,
             'farm_id' => $this->farm->id,
         ]);
+    }
+
+    public function test_summary_returns_totals_with_defaults(): void
+    {
+        FinancialTransaction::factory()->expense()->create([
+            'farm_id' => $this->farm->id,
+            'category_id' => $this->expenseCategory->id,
+            'transaction_date' => now()->toDateString(),
+            'amount' => 12000,
+        ]);
+        FinancialTransaction::factory()->income()->create([
+            'farm_id' => $this->farm->id,
+            'category_id' => $this->incomeCategory->id,
+            'transaction_date' => now()->toDateString(),
+            'amount' => 50000,
+        ]);
+
+        $response = $this->actingAs($this->owner)
+            ->getJson('/api/v1/financial-transactions/summary?farm_id='.$this->farm->id.'&group_by=day');
+
+        $response->assertOk()
+            ->assertJsonPath('data.summary.income', 50000)
+            ->assertJsonPath('data.summary.expense', 12000)
+            ->assertJsonPath('data.summary.net', 38000);
     }
 
     public function test_store_rejects_category_from_other_farm(): void
