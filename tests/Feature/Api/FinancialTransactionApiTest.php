@@ -146,4 +146,45 @@ class FinancialTransactionApiTest extends TestCase
 
         $this->assertSoftDeleted('financial_transactions', ['id' => $tx->id]);
     }
+
+    public function test_update_cannot_move_transaction_to_another_farm(): void
+    {
+        $tx = FinancialTransaction::factory()->expense()->create([
+            'farm_id' => $this->farm->id,
+            'category_id' => $this->expenseCategory->id,
+        ]);
+        $otherFarm = Farm::factory()->create();
+
+        $this->actingAs($this->owner)
+            ->putJson("/api/v1/financial-transactions/{$tx->id}", $this->payload(['farm_id' => $otherFarm->id]))
+            ->assertOk()
+            ->assertJsonPath('data.transaction.amount', '25000.00');
+
+        $this->assertDatabaseHas('financial_transactions', [
+            'id' => $tx->id,
+            'farm_id' => $this->farm->id,
+        ]);
+    }
+
+    public function test_store_rejects_category_from_other_farm(): void
+    {
+        $otherFarm = Farm::factory()->create();
+        $otherCategory = FinancialCategory::factory()->forFarm($otherFarm->id)->expense()->create();
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/financial-transactions', $this->payload(['category_id' => $otherCategory->id]))
+            ->assertStatus(422);
+    }
+
+    public function test_store_rejects_inactive_category(): void
+    {
+        $inactiveCategory = FinancialCategory::factory()
+            ->forFarm($this->farm->id)
+            ->expense()
+            ->create(['is_active' => false]);
+
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/financial-transactions', $this->payload(['category_id' => $inactiveCategory->id]))
+            ->assertStatus(422);
+    }
 }

@@ -79,6 +79,7 @@ class FinancialTransactionController extends Controller
         $this->authorize('manageFinance', $farm);
 
         $validated = $this->validatePayload($request);
+        unset($validated['farm_id']);
         $category = $this->resolveCategory($farm, $validated['category_id'], $validated['type']);
         if (! $category instanceof FinancialCategory) {
             return $category;
