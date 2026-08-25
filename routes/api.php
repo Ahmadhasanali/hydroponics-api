@@ -10,6 +10,8 @@ use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\Farm\FarmController;
 use App\Http\Controllers\Farm\FarmStaffController;
 use App\Http\Controllers\FarmUserController;
+use App\Http\Controllers\FinancialCategoryController;
+use App\Http\Controllers\FinancialTransactionController;
 use App\Http\Controllers\NutrientAdditionController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PhDownLogController;
@@ -110,6 +112,14 @@ Route::prefix('v1')->group(function () {
         Route::post('reminders/{reminder}/occurrences/{occurrence}/done', [ReminderController::class, 'occurrenceDone']);
         Route::post('reminders/{reminder}/occurrences/{occurrence}/skip', [ReminderController::class, 'occurrenceSkip']);
         Route::post('reminders/{reminder}/occurrences/{occurrence}/acknowledge', [ReminderController::class, 'acknowledge']);
+
+        // Financial Categories
+        Route::apiResource('financial-categories', FinancialCategoryController::class)->only(['index', 'store', 'update', 'destroy']);
+
+        // Financial Transactions
+        Route::get('financial-transactions/summary', [FinancialTransactionController::class, 'summary']);
+        Route::apiResource('financial-transactions', FinancialTransactionController::class)
+            ->parameters(['financial-transactions' => 'financialTransaction']);
     });
 
     // Staff (authenticated)
