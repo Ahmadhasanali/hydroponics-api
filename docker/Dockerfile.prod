@@ -83,8 +83,8 @@ WORKDIR /var/www/html
 COPY --from=vendor --chown=www-data:www-data /app /var/www/html
 
 # Writable runtime directories
-RUN mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache public \
+RUN mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache resources/views \
+    && chown -R www-data:www-data storage bootstrap/cache public resources \
     && chmod -R ug+rw storage bootstrap/cache
 
 # Create app user to match host UID/GID (rootless docker)

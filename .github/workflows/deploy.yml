@@ -46,4 +46,4 @@ jobs:
       - name: Optimize Laravel
         run: |
           ssh ${{ secrets.HOME_SERVER_USER }}@${{ secrets.HOME_SERVER_HOST }} \
-            "cd $DEPLOY_PATH && docker compose -f compose.prod.yaml exec -T hydroponic-api php artisan optimize"
+            "cd $DEPLOY_PATH && docker compose -f compose.prod.yaml exec -T hydroponic-api bash -c 'mkdir -p resources/views && php artisan optimize'"
