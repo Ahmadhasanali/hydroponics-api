@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DEPLOY_PATH: /home/deploy/project/Hydroponic-Farm-Management-System_Laravel
+  DEPLOY_PATH: /home/deploy/project/hydroponics-api
 
 jobs:
   deploy:
@@ -41,9 +41,9 @@ jobs:
       - name: Run migrations
         run: |
           ssh ${{ secrets.HOME_SERVER_USER }}@${{ secrets.HOME_SERVER_HOST }} \
-            "cd $DEPLOY_PATH && docker compose -f compose.prod.yaml exec -T hydroponic php artisan migrate --force"
+            "cd $DEPLOY_PATH && docker compose -f compose.prod.yaml exec -T hydroponic-api php artisan migrate --force"
 
       - name: Optimize Laravel
         run: |
           ssh ${{ secrets.HOME_SERVER_USER }}@${{ secrets.HOME_SERVER_HOST }} \
-            "cd $DEPLOY_PATH && docker compose -f compose.prod.yaml exec -T hydroponic php artisan optimize && docker compose -f compose.prod.yaml exec -T hydroponic php artisan reload"
+            "cd $DEPLOY_PATH && docker compose -f compose.prod.yaml exec -T hydroponic-api php artisan optimize"
