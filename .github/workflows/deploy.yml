@@ -36,7 +36,7 @@ jobs:
       - name: Deploy
         run: |
           ssh ${{ secrets.HOME_SERVER_USER }}@${{ secrets.HOME_SERVER_HOST }} \
-            "cd $DEPLOY_PATH && git pull && docker compose -f compose.prod.yaml up -d --build"
+            "cd $DEPLOY_PATH && git fetch --all && git reset --hard origin/main && docker compose -f compose.prod.yaml up -d --build"
 
       - name: Run migrations
         run: |
