@@ -16,7 +16,7 @@ class GetFinancialSummaryTool extends BaseTool
 
     public function description(): string
     {
-        return 'Ringkasan keuangan farm (pemasukan, pengeluaran, laba bersih, kategori terbesar) untuk periode tertentu.';
+        return 'Menampilkan ringkasan/laporan keuangan farm (pemasukan, pengeluaran, laba bersih, kategori terbesar). Panggil tool ini HANYA saat pengguna menanyakan rekap/ringkasan/laporan ("ringkasan", "rekap", "berapa pemasukan", "berapa pengeluaran", "laba", "saldo"). Jangan panggil tool ini saat pengguna ingin mencatat transaksi baru.';
     }
 
     public function parameters(): array

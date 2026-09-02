@@ -16,19 +16,19 @@ class CreateTransactionTool extends BaseTool
 
     public function description(): string
     {
-        return 'Buat transaksi keuangan farm dari pesan natural. Wajib farm_id jika user punya >1 farm. Validasi kategori milik farm.';
+        return 'Mencatat transaksi keuangan baru (income/expense) dari pesan natural pengguna. Panggil tool ini saat pengguna ingin membeli, menjual, membayar, menerima uang, atau menyebut nominal transaksi (mis. "beli pupuk 300 ribu", "jual panen 2 juta"). Jangan panggil tool ini untuk pertanyaan ringkasan/laporan keuangan.';
     }
 
     public function parameters(): array
     {
         return ['type' => 'OBJECT', 'properties' => [
-            'farm_id' => ['type' => 'INTEGER', 'description' => 'ID farm. Wajib jika user punya >1 farm.'],
-            'type' => ['type' => 'STRING', 'description' => 'income atau expense'],
-            'category_id' => ['type' => 'INTEGER', 'description' => 'ID kategori'],
+            'farm_id' => ['type' => 'INTEGER', 'description' => 'ID farm. Opsional jika user hanya punya satu farm.'],
+            'type' => ['type' => 'STRING', 'description' => 'income (jual/terima) atau expense (beli/bayar)'],
+            'category_id' => ['type' => 'INTEGER', 'description' => 'ID kategori. Opsional — jika tidak tahu, kosongkan.'],
             'amount' => ['type' => 'NUMBER', 'description' => 'Nominal Rp >0'],
             'transaction_date' => ['type' => 'STRING', 'description' => 'YYYY-MM-DD, default hari ini'],
             'note' => ['type' => 'STRING', 'description' => 'Catatan opsional'],
-        ], 'required' => ['type', 'category_id', 'amount']];
+        ], 'required' => ['type', 'amount']];
     }
 
     public function handle(array $args, User $user): array
@@ -67,7 +67,11 @@ class CreateTransactionTool extends BaseTool
             return ['error' => 'TYPE_INVALID', 'message' => 'type harus income atau expense'];
         }
 
-        if (! isset($args['category_id']) || ! is_numeric($args['category_id'])) {
+        if (empty($args['category_id'])) {
+            return ['error' => 'CATEGORY_NEEDED', 'message' => 'Pilih kategori dulu.'];
+        }
+
+        if (! is_numeric($args['category_id'])) {
             return ['error' => 'CATEGORY_INVALID', 'message' => 'category_id wajib'];
         }
 

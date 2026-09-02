@@ -76,6 +76,33 @@ class ProcessTelegramUpdateTest extends TestCase
         $this->assertDatabaseHas('telegram_pending_transactions', ['messaging_account_id' => $acc->id, 'status' => 'awaiting_confirm']);
     }
 
+    public function test_gemini_without_category_prompts_keyboard(): void
+    {
+        $owner = User::factory()->create();
+        $farm = Farm::factory()->create();
+        $farm->users()->attach($owner->id, ['role' => 'owner']);
+        FinancialCategory::factory()->forFarm($farm->id)->expense()->create(['name' => 'Nutrisi AB Mix']);
+
+        $acc = MessagingAccount::factory()->create(['user_id' => $owner->id, 'external_id' => '556']);
+
+        $gemini = Mockery::mock(GeminiService::class);
+        $gemini->shouldReceive('generate')->once()->andReturn([
+            'text' => null,
+            'function_calls' => [['name' => 'create_financial_transaction', 'args' => ['type' => 'expense', 'amount' => 300000]]],
+        ]);
+
+        $telegram = Mockery::mock(TelegramService::class);
+        $telegram->shouldReceive('buildCategoryKeyboard')->once()->andReturn(['inline_keyboard' => []]);
+        $telegram->shouldReceive('sendMessage')->once()->andReturn(['ok' => true]);
+
+        $this->app->instance(GeminiService::class, $gemini);
+        $this->app->instance(TelegramService::class, $telegram);
+
+        (new ProcessTelegramUpdate(['message' => ['chat' => ['id' => '556'], 'text' => 'beli pupuk abmix 300 ribu']]))->handle($telegram, $gemini);
+
+        $this->assertDatabaseHas('telegram_pending_transactions', ['messaging_account_id' => $acc->id, 'status' => 'awaiting_category']);
+    }
+
     public function test_confirm_creates_transaction(): void
     {
         $owner = User::factory()->create();

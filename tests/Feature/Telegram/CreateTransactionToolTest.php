@@ -38,6 +38,13 @@ class CreateTransactionToolTest extends TestCase
         $this->assertSame('FARM_REQUIRED', $res['error']);
     }
 
+    public function test_category_needed_when_missing(): void
+    {
+        $res = (new CreateTransactionTool)->handle(['type' => 'expense', 'amount' => 300000], $this->owner);
+
+        $this->assertSame('CATEGORY_NEEDED', $res['error']);
+    }
+
     public function test_type_mismatch(): void
     {
         $res = (new CreateTransactionTool)->handle(['type' => 'income', 'category_id' => $this->cat->id, 'amount' => 1000], $this->owner);

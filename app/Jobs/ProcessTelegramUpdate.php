@@ -85,31 +85,40 @@ class ProcessTelegramUpdate implements ShouldQueue
             }
         }
 
-        // If Gemini returned only get_financial_summary, handle it directly
-        if (! $args) {
-            foreach ($calls as $c) {
-                if (($c['name'] ?? null) === 'get_financial_summary') {
-                    $tool = app(GetFinancialSummaryTool::class);
-                    $res = $tool->handle($c['args'] ?? [], $account->user);
-                    if (isset($res['error'])) {
-                        $telegram->sendMessage($chatId, $res['error']);
-
-                        return;
-                    }
-                    $data = $res['data'];
-                    $text = is_array($data) && isset($data['farm_name']) ? "Ringkasan {$data['farm_name']}: pemasukan Rp ".number_format($data['income'], 0, ',', '.').', pengeluaran Rp '.number_format($data['expense'], 0, ',', '.').', laba Rp '.number_format($data['net'], 0, ',', '.') : json_encode($data, JSON_UNESCAPED_UNICODE);
-                    $telegram->sendMessage($chatId, $text);
-
-                    return;
-                }
-            }
-            $telegram->sendMessage($chatId, 'Kirim contoh: "beli pupuk abmix 300 ribu" atau "jual panen 2 juta"');
+        // Jika Gemini mengembalikan create_financial_transaction, proses sebagai pencatatan.
+        if ($args) {
+            $this->handleCreateTransaction($telegram, $account, $chatId, $args);
 
             return;
         }
 
-        $tool = app(CreateTransactionTool::class);
+        // Jika Gemini mengembalikan get_financial_summary, handle langsung.
+        foreach ($calls as $c) {
+            if (($c['name'] ?? null) === 'get_financial_summary') {
+                $tool = app(GetFinancialSummaryTool::class);
+                $res = $tool->handle($c['args'] ?? [], $account->user);
+                if (isset($res['error'])) {
+                    $telegram->sendMessage($chatId, $res['error']);
+
+                    return;
+                }
+                $data = $res['data'];
+                $text = is_array($data) && isset($data['farm_name']) ? "Ringkasan {$data['farm_name']}: pemasukan Rp ".number_format($data['income'], 0, ',', '.').', pengeluaran Rp '.number_format($data['expense'], 0, ',', '.').', laba Rp '.number_format($data['net'], 0, ',', '.') : json_encode($data, JSON_UNESCAPED_UNICODE);
+                $telegram->sendMessage($chatId, $text);
+
+                return;
+            }
+        }
+
+        $telegram->sendMessage($chatId, 'Kirim contoh: "beli pupuk abmix 300 ribu" atau "jual panen 2 juta"');
+
+        return;
+    }
+
+    private function handleCreateTransaction(TelegramService $telegram, MessagingAccount $account, string $chatId, array $args): void
+    {
         $user = $account->user;
+        $tool = app(CreateTransactionTool::class);
         $res = $tool->handle($args, $user);
 
         if (isset($res['error'])) {
@@ -132,9 +141,21 @@ class ProcessTelegramUpdate implements ShouldQueue
                 return;
             }
 
-            if (in_array($res['error'], ['CATEGORY_INVALID', 'TYPE_MISMATCH'], true)) {
+            if (in_array($res['error'], ['CATEGORY_NEEDED', 'CATEGORY_INVALID', 'TYPE_MISMATCH'], true)) {
                 $farmId = $args['farm_id'] ?? $user->farms()->first()?->id;
-                $cats = $farmId ? FinancialCategory::forFarm($farmId)->where('is_active', true)->get()->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'type' => $c->type])->all() : [];
+                $type = $args['type'] ?? null;
+
+                $cats = [];
+
+                if ($farmId !== null) {
+                    $query = FinancialCategory::forFarm($farmId)->where('is_active', true);
+
+                    if ($res['error'] === 'TYPE_MISMATCH' && $type !== null) {
+                        $query->where('type', $type);
+                    }
+
+                    $cats = $query->get()->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'type' => $c->type])->all();
+                }
 
                 $pending = TelegramPendingTransaction::create([
                     'messaging_account_id' => $account->id,
@@ -148,7 +169,7 @@ class ProcessTelegramUpdate implements ShouldQueue
                     'expires_at' => now()->addMinutes(5),
                 ]);
 
-                $telegram->sendMessage($chatId, 'Kategori tidak cocok. Pilih kategori:', $telegram->buildCategoryKeyboard($cats, $pending->id));
+                $telegram->sendMessage($chatId, $res['error'] === 'CATEGORY_NEEDED' ? 'Kategori apa? Pilih salah satu:' : 'Kategori tidak cocok. Pilih kategori:', $telegram->buildCategoryKeyboard($cats, $pending->id));
 
                 return;
             }
