@@ -28,9 +28,12 @@ use App\Http\Controllers\Staff\StaffPhDownController;
 use App\Http\Controllers\Staff\StaffReminderController;
 use App\Http\Controllers\Staff\StaffReportController;
 use App\Http\Controllers\TankController;
+use App\Http\Controllers\TelegramController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
+
+    Route::post('telegram/webhook', [TelegramController::class, 'webhook'])->middleware('throttle:60,1');
 
     // Auth (no auth required)
     Route::post('register', [RegistrationController::class, 'register'])
@@ -120,6 +123,12 @@ Route::prefix('v1')->group(function () {
         Route::get('financial-transactions/summary', [FinancialTransactionController::class, 'summary']);
         Route::apiResource('financial-transactions', FinancialTransactionController::class)
             ->parameters(['financial-transactions' => 'financialTransaction']);
+
+        // Telegram
+        Route::post('telegram/link-code', [TelegramController::class, 'linkCode'])->middleware('throttle:5,1');
+        Route::get('telegram/status', [TelegramController::class, 'status']);
+        Route::patch('telegram/default-farm', [TelegramController::class, 'updateDefaultFarm']);
+        Route::post('telegram/unlink', [TelegramController::class, 'unlink']);
     });
 
     // Staff (authenticated)

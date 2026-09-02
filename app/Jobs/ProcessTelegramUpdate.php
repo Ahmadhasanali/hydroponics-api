@@ -1,0 +1,272 @@
+<?php
+
+namespace App\Jobs;
+
+use App\ChatTools\CreateTransactionTool;
+use App\Models\Farm;
+use App\Models\Farm\FinancialCategory;
+use App\Models\Farm\FinancialTransaction;
+use App\Models\MessagingAccount;
+use App\Models\MessagingLinkCode;
+use App\Models\TelegramPendingTransaction;
+use App\Services\GeminiService;
+use App\Services\TelegramService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+
+class ProcessTelegramUpdate implements ShouldQueue
+{
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
+
+    public function __construct(public array $update) {}
+
+    public function handle(TelegramService $telegram, GeminiService $gemini): void
+    {
+        $callback = $this->update['callback_query'] ?? null;
+
+        if ($callback) {
+            $this->handleCallbackQuery($callback, $telegram);
+
+            return;
+        }
+
+        $message = $this->update['message'] ?? null;
+
+        if (! $message || ! isset($message['chat']['id'])) {
+            return;
+        }
+
+        $chatId = (string) $message['chat']['id'];
+        $text = trim($message['text'] ?? '');
+
+        if (preg_match('/^[A-Z0-9]{6}$/', $text)) {
+            $this->handleLinkCode($chatId, $text, $telegram);
+
+            return;
+        }
+
+        $account = MessagingAccount::where('channel', 'telegram')->where('external_id', $chatId)->first();
+
+        if (! $account) {
+            $telegram->sendMessage($chatId, 'Hubungkan dulu di HydroFarm → Pengaturan → Telegram.');
+
+            return;
+        }
+
+        try {
+            $result = $gemini->generate([['role' => 'user', 'content' => $text]]);
+        } catch (\Throwable $e) {
+            $telegram->sendMessage($chatId, 'Maaf, AI sibuk. Coba kirim ulang dalam 1 menit.');
+
+            return;
+        }
+
+        $calls = $result['function_calls'] ?? [];
+        $args = null;
+
+        foreach ($calls as $c) {
+            if (($c['name'] ?? null) === 'create_financial_transaction') {
+                $args = $c['args'];
+                break;
+            }
+        }
+
+        if (! $args) {
+            $telegram->sendMessage($chatId, 'Kirim contoh: "beli pupuk abmix 300 ribu" atau "jual panen 2 juta"');
+
+            return;
+        }
+
+        $tool = app(CreateTransactionTool::class);
+        $user = $account->user;
+        $res = $tool->handle($args, $user);
+
+        if (isset($res['error'])) {
+            if ($res['error'] === 'FARM_REQUIRED') {
+                $pending = TelegramPendingTransaction::create([
+                    'messaging_account_id' => $account->id,
+                    'chat_id' => $chatId,
+                    'type' => $args['type'] ?? 'expense',
+                    'category_id' => $args['category_id'] ?? null,
+                    'amount' => $args['amount'] ?? 0,
+                    'transaction_date' => $args['transaction_date'] ?? now()->toDateString(),
+                    'note' => $args['note'] ?? null,
+                    'status' => 'awaiting_farm',
+                    'expires_at' => now()->addMinutes(5),
+                ]);
+
+                $farms = $res['farms'] ?? $user->farms()->get()->map(fn ($f) => ['id' => $f->id, 'name' => $f->name])->all();
+                $telegram->sendMessage($chatId, 'Pilih farm:', $telegram->buildFarmKeyboard($farms, $pending->id, $account->default_farm_id));
+
+                return;
+            }
+
+            if (in_array($res['error'], ['CATEGORY_INVALID', 'TYPE_MISMATCH'], true)) {
+                $farmId = $args['farm_id'] ?? $user->farms()->first()?->id;
+                $cats = $farmId ? FinancialCategory::forFarm($farmId)->where('is_active', true)->get()->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'type' => $c->type])->all() : [];
+
+                $pending = TelegramPendingTransaction::create([
+                    'messaging_account_id' => $account->id,
+                    'chat_id' => $chatId,
+                    'farm_id' => $farmId,
+                    'type' => $args['type'],
+                    'amount' => $args['amount'],
+                    'transaction_date' => $args['transaction_date'] ?? now()->toDateString(),
+                    'note' => $args['note'] ?? null,
+                    'status' => 'awaiting_category',
+                    'expires_at' => now()->addMinutes(5),
+                ]);
+
+                $telegram->sendMessage($chatId, 'Kategori tidak cocok. Pilih kategori:', $telegram->buildCategoryKeyboard($cats, $pending->id));
+
+                return;
+            }
+
+            $telegram->sendMessage($chatId, $res['message'] ?? 'Data tidak valid. Coba lagi.');
+
+            return;
+        }
+
+        $data = $res['data'];
+
+        $pending = TelegramPendingTransaction::create([
+            'messaging_account_id' => $account->id,
+            'chat_id' => $chatId,
+            'farm_id' => $data['farm_id'],
+            'type' => $data['type'],
+            'category_id' => $data['category_id'],
+            'amount' => $data['amount'],
+            'transaction_date' => $data['transaction_date'],
+            'note' => $data['note'],
+            'status' => 'awaiting_confirm',
+            'expires_at' => now()->addMinutes(5),
+        ]);
+
+        $catName = FinancialCategory::find($data['category_id'])?->name ?? '?';
+        $farmName = Farm::find($data['farm_id'])?->name ?? '?';
+        $text = 'Tercatat: '.ucfirst($data['type']).' – '.$catName.' – Rp '.number_format($data['amount'], 0, ',', '.').' (Farm '.$farmName.', '.$data['transaction_date'].'). Konfirmasi?';
+        $telegram->sendMessage($chatId, $text, $telegram->buildConfirmKeyboard($pending->id));
+    }
+
+    private function handleLinkCode(string $chatId, string $code, TelegramService $telegram): void
+    {
+        $row = MessagingLinkCode::where('code', $code)->where('expires_at', '>', now())->whereNull('used_at')->first();
+
+        if (! $row) {
+            $telegram->sendMessage($chatId, 'Kode tidak valid atau sudah kadaluarsa. Generate ulang di HydroFarm → Pengaturan → Telegram.');
+
+            return;
+        }
+
+        if (MessagingAccount::where('channel', 'telegram')->where('external_id', $chatId)->exists()) {
+            $telegram->sendMessage($chatId, 'Akun Telegram ini sudah tertaut ke akun lain. Putus dulu di Pengaturan → Telegram.');
+
+            return;
+        }
+
+        if (MessagingAccount::where('user_id', $row->user_id)->exists()) {
+            $telegram->sendMessage($chatId, 'Akun HydroFarm ini sudah tertaut ke Telegram lain.');
+
+            return;
+        }
+
+        MessagingAccount::create(['channel' => 'telegram', 'external_id' => $chatId, 'user_id' => $row->user_id, 'linked_at' => now()]);
+        $row->update(['used_at' => now()]);
+        $telegram->sendMessage($chatId, '✅ Berhasil terhubung! Kirim "beli pupuk abmix 300 ribu" untuk coba.');
+    }
+
+    private function handleCallbackQuery(array $cq, TelegramService $telegram): void
+    {
+        $data = $cq['data'] ?? '';
+        $cqId = $cq['id'] ?? '';
+        $chatId = (string) ($cq['message']['chat']['id'] ?? $cq['from']['id'] ?? '');
+        $msgId = $cq['message']['message_id'] ?? null;
+
+        if (str_starts_with($data, 'confirm:')) {
+            $id = (int) substr($data, 8);
+            $p = TelegramPendingTransaction::find($id);
+
+            if (! $p || $p->expires_at->isPast()) {
+                $telegram->answerCallbackQuery($cqId, 'Waktu habis');
+
+                return;
+            }
+
+            FinancialTransaction::create([
+                'farm_id' => $p->farm_id,
+                'category_id' => $p->category_id,
+                'type' => $p->type,
+                'amount' => $p->amount,
+                'transaction_date' => $p->transaction_date,
+                'note' => $p->note,
+                'source' => 'telegram',
+                'status' => 'approved',
+                'user_id' => $p->account->user_id,
+            ]);
+
+            $telegram->answerCallbackQuery($cqId, '✅ Disimpan');
+
+            if ($msgId !== null) {
+                $telegram->editMessageText($chatId, $msgId, '✅ Transaksi disimpan.');
+            }
+
+            $p->delete();
+
+            return;
+        }
+
+        if (str_starts_with($data, 'cancel:')) {
+            $id = (int) substr($data, 7);
+            TelegramPendingTransaction::find($id)?->delete();
+            $telegram->answerCallbackQuery($cqId, '❌ Dibatalkan');
+
+            if ($msgId !== null) {
+                $telegram->editMessageText($chatId, $msgId, '❌ Dibatalkan.');
+            }
+
+            return;
+        }
+
+        if (str_starts_with($data, 'farm_pick:')) {
+            $parts = explode(':', $data);
+            $farmId = (int) ($parts[1] ?? 0);
+            $pid = (int) ($parts[2] ?? 0);
+            $p = TelegramPendingTransaction::find($pid);
+
+            if ($p) {
+                $p->update(['farm_id' => $farmId, 'status' => 'awaiting_confirm']);
+                $telegram->answerCallbackQuery($cqId, 'Farm dipilih');
+
+                if ($msgId !== null) {
+                    $telegram->editMessageText($chatId, $msgId, 'Farm dipilih. Konfirmasi?', (new TelegramService)->buildConfirmKeyboard($p->id));
+                }
+            }
+
+            return;
+        }
+
+        if (str_starts_with($data, 'category_pick:')) {
+            $parts = explode(':', $data);
+            $catId = (int) ($parts[1] ?? 0);
+            $pid = (int) ($parts[2] ?? 0);
+            $p = TelegramPendingTransaction::find($pid);
+
+            if ($p) {
+                $p->update(['category_id' => $catId, 'status' => 'awaiting_confirm']);
+                $telegram->answerCallbackQuery($cqId, 'Kategori dipilih');
+
+                if ($msgId !== null) {
+                    $telegram->editMessageText($chatId, $msgId, 'Kategori dipilih. Konfirmasi?', (new TelegramService)->buildConfirmKeyboard($p->id));
+                }
+            }
+
+            return;
+        }
+    }
+}
