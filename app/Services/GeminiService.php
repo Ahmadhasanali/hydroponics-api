@@ -15,11 +15,12 @@ class GeminiService
 
     /**
      * @param  array<int, array{role: string, content: ?string, tool_calls?: array<int, mixed>}>  $messages
+     * @param  array<int, string>|null  $allowedTools  Filter tools for channel gating (e.g. telegram)
      * @return array{text: ?string, function_calls: array<int, array{id: string, name: string, args: array<string, mixed>, signature: ?string}>}
      *
      * @throws RuntimeException Ketika API key kosong atau API mengembalikan non-2xx
      */
-    public function generate(array $messages): array
+    public function generate(array $messages, ?array $allowedTools = null): array
     {
         $apiKey = config('gemini.api_key');
 
@@ -37,7 +38,7 @@ class GeminiService
 
         foreach ($models as $model) {
             try {
-                return $this->requestModel($model, $messages, $apiKey);
+                return $this->requestModel($model, $messages, $apiKey, $allowedTools);
             } catch (RateLimitedException $e) {
                 $lastException = $e;
             }
@@ -53,7 +54,7 @@ class GeminiService
         return $models !== [] ? $models : array_filter([config('gemini.model')]);
     }
 
-    private function requestModel(string $model, array $messages, string $apiKey): array
+    private function requestModel(string $model, array $messages, string $apiKey, ?array $allowedTools = null): array
     {
         $payload = [
             'model' => $model,
@@ -61,7 +62,9 @@ class GeminiService
             'max_tokens' => config('gemini.max_output_tokens'),
         ];
 
-        $declarations = $this->chatTools->declarations();
+        $declarations = $allowedTools !== null
+            ? $this->chatTools->declarationsFiltered($allowedTools)
+            : $this->chatTools->declarations();
 
         if ($declarations !== []) {
             $payload['tools'] = array_map(

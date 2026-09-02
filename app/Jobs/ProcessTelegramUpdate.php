@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\ChatTools\CreateTransactionTool;
+use App\ChatTools\GetFinancialSummaryTool;
 use App\Models\Farm;
 use App\Models\Farm\FinancialCategory;
 use App\Models\Farm\FinancialTransaction;
@@ -13,9 +14,12 @@ use App\Services\GeminiService;
 use App\Services\TelegramService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProcessTelegramUpdate implements ShouldQueue
 {
@@ -23,6 +27,10 @@ class ProcessTelegramUpdate implements ShouldQueue
     use InteractsWithQueue;
     use Queueable;
     use SerializesModels;
+
+    public int $tries = 1;
+
+    public int $timeout = 25;
 
     public function __construct(public array $update) {}
 
@@ -60,7 +68,7 @@ class ProcessTelegramUpdate implements ShouldQueue
         }
 
         try {
-            $result = $gemini->generate([['role' => 'user', 'content' => $text]]);
+            $result = $gemini->generate([['role' => 'user', 'content' => $text]], ['create_financial_transaction', 'get_financial_summary']);
         } catch (\Throwable $e) {
             $telegram->sendMessage($chatId, 'Maaf, AI sibuk. Coba kirim ulang dalam 1 menit.');
 
@@ -77,7 +85,24 @@ class ProcessTelegramUpdate implements ShouldQueue
             }
         }
 
+        // If Gemini returned only get_financial_summary, handle it directly
         if (! $args) {
+            foreach ($calls as $c) {
+                if (($c['name'] ?? null) === 'get_financial_summary') {
+                    $tool = app(GetFinancialSummaryTool::class);
+                    $res = $tool->handle($c['args'] ?? [], $account->user);
+                    if (isset($res['error'])) {
+                        $telegram->sendMessage($chatId, $res['error']);
+
+                        return;
+                    }
+                    $data = $res['data'];
+                    $text = is_array($data) && isset($data['farm_name']) ? "Ringkasan {$data['farm_name']}: pemasukan Rp ".number_format($data['income'], 0, ',', '.').', pengeluaran Rp '.number_format($data['expense'], 0, ',', '.').', laba Rp '.number_format($data['net'], 0, ',', '.') : json_encode($data, JSON_UNESCAPED_UNICODE);
+                    $telegram->sendMessage($chatId, $text);
+
+                    return;
+                }
+            }
             $telegram->sendMessage($chatId, 'Kirim contoh: "beli pupuk abmix 300 ribu" atau "jual panen 2 juta"');
 
             return;
@@ -164,20 +189,40 @@ class ProcessTelegramUpdate implements ShouldQueue
             return;
         }
 
-        if (MessagingAccount::where('channel', 'telegram')->where('external_id', $chatId)->exists()) {
-            $telegram->sendMessage($chatId, 'Akun Telegram ini sudah tertaut ke akun lain. Putus dulu di Pengaturan → Telegram.');
+        try {
+            DB::transaction(function () use ($chatId, $row): void {
+                if (MessagingAccount::where('channel', 'telegram')->where('external_id', $chatId)->lockForUpdate()->exists()) {
+                    throw new \RuntimeException('external_linked');
+                }
+
+                if (MessagingAccount::where('user_id', $row->user_id)->lockForUpdate()->exists()) {
+                    throw new \RuntimeException('user_linked');
+                }
+
+                MessagingAccount::create(['channel' => 'telegram', 'external_id' => $chatId, 'user_id' => $row->user_id, 'linked_at' => now()]);
+                $row->update(['used_at' => now()]);
+            });
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'external_linked') {
+                $telegram->sendMessage($chatId, 'Akun Telegram ini sudah tertaut ke akun lain. Putus dulu di Pengaturan → Telegram.');
+
+                return;
+            }
+
+            if ($e->getMessage() === 'user_linked') {
+                $telegram->sendMessage($chatId, 'Akun HydroFarm ini sudah tertaut ke Telegram lain.');
+
+                return;
+            }
+
+            throw $e;
+        } catch (QueryException $e) {
+            Log::warning('Telegram link race unique violation', ['chat_id' => $chatId, 'code' => $code, 'error' => $e->getMessage()]);
+            $telegram->sendMessage($chatId, 'Akun sudah tertaut (race). Coba lagi atau cek Pengaturan → Telegram.');
 
             return;
         }
 
-        if (MessagingAccount::where('user_id', $row->user_id)->exists()) {
-            $telegram->sendMessage($chatId, 'Akun HydroFarm ini sudah tertaut ke Telegram lain.');
-
-            return;
-        }
-
-        MessagingAccount::create(['channel' => 'telegram', 'external_id' => $chatId, 'user_id' => $row->user_id, 'linked_at' => now()]);
-        $row->update(['used_at' => now()]);
         $telegram->sendMessage($chatId, '✅ Berhasil terhubung! Kirim "beli pupuk abmix 300 ribu" untuk coba.');
     }
 
@@ -190,10 +235,22 @@ class ProcessTelegramUpdate implements ShouldQueue
 
         if (str_starts_with($data, 'confirm:')) {
             $id = (int) substr($data, 8);
-            $p = TelegramPendingTransaction::find($id);
+            $p = TelegramPendingTransaction::with('account')->find($id);
 
             if (! $p || $p->expires_at->isPast()) {
                 $telegram->answerCallbackQuery($cqId, 'Waktu habis');
+
+                return;
+            }
+
+            if ($p->chat_id !== $chatId && ($p->account?->external_id ?? null) !== $chatId) {
+                $telegram->answerCallbackQuery($cqId, 'Tidak berhak');
+
+                return;
+            }
+
+            if ($p->status !== 'awaiting_confirm' || empty($p->farm_id) || empty($p->category_id)) {
+                $telegram->answerCallbackQuery($cqId, 'Data belum lengkap');
 
                 return;
             }
@@ -223,7 +280,15 @@ class ProcessTelegramUpdate implements ShouldQueue
 
         if (str_starts_with($data, 'cancel:')) {
             $id = (int) substr($data, 7);
-            TelegramPendingTransaction::find($id)?->delete();
+            $p = TelegramPendingTransaction::with('account')->find($id);
+
+            if ($p && $p->chat_id !== $chatId && ($p->account?->external_id ?? null) !== $chatId) {
+                $telegram->answerCallbackQuery($cqId, 'Tidak berhak');
+
+                return;
+            }
+
+            $p?->delete();
             $telegram->answerCallbackQuery($cqId, '❌ Dibatalkan');
 
             if ($msgId !== null) {
@@ -237,14 +302,59 @@ class ProcessTelegramUpdate implements ShouldQueue
             $parts = explode(':', $data);
             $farmId = (int) ($parts[1] ?? 0);
             $pid = (int) ($parts[2] ?? 0);
-            $p = TelegramPendingTransaction::find($pid);
+            $p = TelegramPendingTransaction::with('account.user')->find($pid);
 
-            if ($p) {
-                $p->update(['farm_id' => $farmId, 'status' => 'awaiting_confirm']);
+            if (! $p) {
+                $telegram->answerCallbackQuery($cqId, 'Waktu habis');
+
+                return;
+            }
+
+            if ($p->chat_id !== $chatId && ($p->account?->external_id ?? null) !== $chatId) {
+                $telegram->answerCallbackQuery($cqId, 'Tidak berhak');
+
+                return;
+            }
+
+            if ($p->expires_at->isPast()) {
+                $telegram->answerCallbackQuery($cqId, 'Waktu habis');
+
+                return;
+            }
+
+            $user = $p->account->user;
+
+            if (! $user || ! $user->farms()->whereKey($farmId)->exists()) {
+                $telegram->answerCallbackQuery($cqId, 'Farm tidak valid');
+
+                return;
+            }
+
+            $p->update(['farm_id' => $farmId]);
+
+            $fresh = $p->fresh();
+
+            if ($fresh->farm_id && $fresh->category_id) {
+                $fresh->update(['status' => 'awaiting_confirm']);
                 $telegram->answerCallbackQuery($cqId, 'Farm dipilih');
 
                 if ($msgId !== null) {
-                    $telegram->editMessageText($chatId, $msgId, 'Farm dipilih. Konfirmasi?', (new TelegramService)->buildConfirmKeyboard($p->id));
+                    $telegram->editMessageText($chatId, $msgId, 'Farm dipilih. Konfirmasi?', (new TelegramService)->buildConfirmKeyboard($fresh->id));
+                }
+            } elseif (empty($fresh->category_id)) {
+                $fresh->update(['status' => 'awaiting_category']);
+                $cats = FinancialCategory::forFarm($farmId)->where('is_active', true)->get()->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'type' => $c->type])->all();
+                $telegram->answerCallbackQuery($cqId, 'Farm dipilih, pilih kategori');
+
+                if ($msgId !== null) {
+                    $telegram->editMessageText($chatId, $msgId, 'Farm dipilih. Pilih kategori:', (new TelegramService)->buildCategoryKeyboard($cats, $fresh->id));
+                }
+            } else {
+                $fresh->update(['status' => 'awaiting_confirm']);
+                $telegram->answerCallbackQuery($cqId, 'Farm dipilih');
+
+                if ($msgId !== null) {
+                    $telegram->editMessageText($chatId, $msgId, 'Farm dipilih. Konfirmasi?', (new TelegramService)->buildConfirmKeyboard($fresh->id));
                 }
             }
 
@@ -255,14 +365,63 @@ class ProcessTelegramUpdate implements ShouldQueue
             $parts = explode(':', $data);
             $catId = (int) ($parts[1] ?? 0);
             $pid = (int) ($parts[2] ?? 0);
-            $p = TelegramPendingTransaction::find($pid);
+            $p = TelegramPendingTransaction::with('account.user')->find($pid);
 
-            if ($p) {
-                $p->update(['category_id' => $catId, 'status' => 'awaiting_confirm']);
+            if (! $p) {
+                $telegram->answerCallbackQuery($cqId, 'Waktu habis');
+
+                return;
+            }
+
+            if ($p->chat_id !== $chatId && ($p->account?->external_id ?? null) !== $chatId) {
+                $telegram->answerCallbackQuery($cqId, 'Tidak berhak');
+
+                return;
+            }
+
+            if ($p->expires_at->isPast()) {
+                $telegram->answerCallbackQuery($cqId, 'Waktu habis');
+
+                return;
+            }
+
+            if (empty($p->farm_id)) {
+                $telegram->answerCallbackQuery($cqId, 'Pilih farm dulu');
+
+                return;
+            }
+
+            $category = FinancialCategory::forFarm($p->farm_id)->whereKey($catId)->where('is_active', true)->first();
+
+            if (! $category) {
+                $telegram->answerCallbackQuery($cqId, 'Kategori tidak valid');
+
+                return;
+            }
+
+            if ($category->type !== $p->type) {
+                $telegram->answerCallbackQuery($cqId, 'Tipe kategori tidak sesuai');
+
+                return;
+            }
+
+            $p->update(['category_id' => $catId]);
+
+            $fresh = $p->fresh();
+
+            if ($fresh->farm_id && $fresh->category_id) {
+                $fresh->update(['status' => 'awaiting_confirm']);
                 $telegram->answerCallbackQuery($cqId, 'Kategori dipilih');
 
                 if ($msgId !== null) {
-                    $telegram->editMessageText($chatId, $msgId, 'Kategori dipilih. Konfirmasi?', (new TelegramService)->buildConfirmKeyboard($p->id));
+                    $telegram->editMessageText($chatId, $msgId, 'Kategori dipilih. Konfirmasi?', (new TelegramService)->buildConfirmKeyboard($fresh->id));
+                }
+            } else {
+                $fresh->update(['status' => 'awaiting_farm']);
+                $telegram->answerCallbackQuery($cqId, 'Kategori dipilih');
+
+                if ($msgId !== null) {
+                    $telegram->editMessageText($chatId, $msgId, 'Kategori dipilih. Konfirmasi?', (new TelegramService)->buildConfirmKeyboard($fresh->id));
                 }
             }
 

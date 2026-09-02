@@ -29,6 +29,10 @@ class TelegramService
     {
         $token = config('telegram.bot_token');
 
+        if (empty($token)) {
+            return ['ok' => false];
+        }
+
         $payload = ['chat_id' => $chatId, 'message_id' => $messageId, 'text' => $text, 'parse_mode' => 'HTML'];
 
         if ($replyMarkup) {
@@ -42,6 +46,10 @@ class TelegramService
     {
         $token = config('telegram.bot_token');
 
+        if (empty($token)) {
+            return;
+        }
+
         Http::post("https://api.telegram.org/bot{$token}/answerCallbackQuery", ['callback_query_id' => $callbackQueryId, 'text' => $text]);
     }
 
@@ -54,7 +62,12 @@ class TelegramService
     {
         $rows = [];
 
-        usort($farms, fn ($a, $b) => ($a['id'] == $defaultFarmId ? -1 : 1));
+        usort($farms, function (array $a, array $b) use ($defaultFarmId): int {
+            $aDefault = ($a['id'] == $defaultFarmId) ? 0 : 1;
+            $bDefault = ($b['id'] == $defaultFarmId) ? 0 : 1;
+
+            return $aDefault <=> $bDefault;
+        });
 
         foreach ($farms as $f) {
             $label = $f['name'].($f['id'] == $defaultFarmId ? ' ⭐️' : '');

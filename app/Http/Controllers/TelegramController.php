@@ -8,6 +8,7 @@ use App\Models\MessagingAccount;
 use App\Models\MessagingLinkCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class TelegramController extends Controller
@@ -75,11 +76,13 @@ class TelegramController extends Controller
     {
         $secret = config('telegram.webhook_secret');
 
-        if (! empty($secret) && $request->header('X-Telegram-Bot-Api-Secret-Token') !== $secret) {
+        if (empty($secret)) {
+            Log::warning('Telegram webhook secret empty — webhook not verified');
+        } elseif ($request->header('X-Telegram-Bot-Api-Secret-Token') !== $secret) {
             return response()->json(['ok' => false], 403);
         }
 
-        dispatch(new ProcessTelegramUpdate($request->all()));
+        dispatch(new ProcessTelegramUpdate($request->all()))->onQueue('default');
 
         return response()->json(['ok' => true]);
     }

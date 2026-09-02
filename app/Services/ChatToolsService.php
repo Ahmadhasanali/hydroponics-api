@@ -48,6 +48,20 @@ class ChatToolsService
     }
 
     /**
+     * Filtered declarations for channel-gated calls (e.g. telegram).
+     *
+     * @param  array<int, string>  $allowed
+     * @return array<int, array<string, mixed>>
+     */
+    public function declarationsFiltered(array $allowed): array
+    {
+        return array_values(array_filter(
+            $this->declarations(),
+            fn (array $decl): bool => in_array($decl['name'], $allowed, true),
+        ));
+    }
+
+    /**
      * Ubah skema parameter Gemini (huruf besar, properties wajib object)
      * menjadi JSON Schema yang dipahami endpoint OpenAI-compatible.
      *
