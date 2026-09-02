@@ -54,7 +54,8 @@ class ReminderGlobalApiTest extends TestCase
 
         $response->assertOk()
             ->assertJsonCount(2, 'data')
-            ->assertJsonPath('data.0.farm_id', $farmA->id)
-            ->assertJsonPath('data.0.farm.name', $farmA->name);
+            ->assertJsonPath('data.0.farm_id', $farmB->id)
+            ->assertJsonPath('data.0.farm.name', $farmB->name)
+            ->assertJsonPath('data.1.farm_id', $farmA->id);
     }
 }

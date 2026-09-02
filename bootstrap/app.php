@@ -3,6 +3,8 @@
 use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureUser;
+use App\Models\MessagingLinkCode;
+use App\Models\TelegramPendingTransaction;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -42,5 +44,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('reminders:dispatch')->everyMinute();
         $schedule->command('reminders:prune-sent')->dailyAt('03:00');
         $schedule->command('email:resend-unverified')->everyMinute();
+        $schedule->call(function (): void {
+            TelegramPendingTransaction::where('expires_at', '<', now())->delete();
+            MessagingLinkCode::where('expires_at', '<', now()->subDay())->delete();
+        })->everyFiveMinutes();
     })
     ->create();

@@ -84,9 +84,16 @@ class GeminiServiceTest extends TestCase
 
         Http::assertSent(function ($request): bool {
             $body = $request->data();
+            $tools = $body['tools'] ?? [];
 
-            return ($body['tools'][0]['type'] ?? null) === 'function'
-                && ($body['tools'][0]['function']['name'] ?? null) === 'get_farms';
+            foreach ($tools as $tool) {
+                if (($tool['type'] ?? null) === 'function'
+                    && ($tool['function']['name'] ?? null) === 'get_farms') {
+                    return true;
+                }
+            }
+
+            return false;
         });
     }
 
