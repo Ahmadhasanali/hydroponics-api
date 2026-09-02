@@ -223,4 +223,35 @@ class GeminiServiceTest extends TestCase
 
         $this->assertCount(1, Http::recorded());
     }
+
+    #[Test]
+    public function generate_fails_over_to_next_model_on_connection_error(): void
+    {
+        config([
+            'gemini.api_key' => 'test-api-key',
+            'gemini.models' => ['gemini-3.6-flash', 'gemini-3.5-flash'],
+        ]);
+
+        Http::fake(function ($request) {
+            if ($request->data()['model'] === 'gemini-3.6-flash') {
+                throw new \Illuminate\Http\Client\ConnectionException('timeout');
+            }
+
+            return Http::response([
+                'choices' => [[
+                    'message' => ['role' => 'assistant', 'content' => 'ok dari model kedua'],
+                ]],
+            ], 200);
+        });
+
+        $result = app(GeminiService::class)->generate([
+            ['role' => 'user', 'content' => 'halo'],
+        ]);
+
+        $this->assertSame('ok dari model kedua', $result['text']);
+
+        $requests = Http::recorded();
+        $this->assertCount(1, $requests);
+        $this->assertSame('gemini-3.5-flash', $requests[0][0]->data()['model']);
+    }
 }

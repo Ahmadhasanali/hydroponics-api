@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -73,10 +74,15 @@ class GeminiService
             );
         }
 
-        $response = Http::timeout(config('gemini.timeout'))
-            ->retry(1, 100)
-            ->withToken($apiKey)
-            ->post(self::ENDPOINT, $payload);
+        try {
+            $response = Http::timeout(config('gemini.timeout'))
+                ->retry(1, 100)
+                ->withToken($apiKey)
+                ->post(self::ENDPOINT, $payload);
+        } catch (ConnectionException $e) {
+            // Timeout/koneksi gagal: anggap retryable agar failover ke model berikutnya berjalan.
+            throw new RateLimitedException('Gemini API connection error: '.$e->getMessage());
+        }
 
         if ($response->failed()) {
             $message = 'Gemini API error: '.$response->status().' '.$response->body();

@@ -30,7 +30,7 @@ class ProcessTelegramUpdate implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 25;
+    public int $timeout = 120;
 
     public function __construct(public array $update) {}
 

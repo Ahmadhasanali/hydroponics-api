@@ -372,6 +372,6 @@ Floating chat widget (login-only) berbasis Google Gemini API untuk diskusi agrik
 
 Konfigurasi (`.env`):
 - `GEMINI_API_KEY` — API key dari https://aistudio.google.com/apikey
-- `GEMINI_MODEL` — default `gemini-3.6-flash`
+- `GEMINI_MODEL` — default `gemini-3.5-flash-lite`
 
 Menambah tool baru: buat class di `app/ChatTools/` yang mengimplementasikan `ChatToolContract` — otomatis terdeteksi.
