@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Staff;
 
+use App\Enums\ReminderStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Farm\Staff;
 use App\Models\Reminder;
@@ -30,8 +31,16 @@ class StaffReminderController extends Controller
         $reminders = Reminder::query()
             ->where('farm_id', $staff->farm_id)
             ->whereIn('id', $visibleIds)
-            ->with('targets.targetable')
-            ->orderByDesc('starts_at')
+            ->with('targets.targetable', 'occurrences')
+            ->orderBy(
+                ReminderOccurrence::select('scheduled_at')
+                    ->whereColumn('reminder_occurrences.reminder_id', 'reminders.id')
+                    ->where('status', ReminderStatus::Pending->value)
+                    ->orderBy('scheduled_at')
+                    ->limit(1)
+            )
+            ->orderBy('starts_at')
+            ->orderBy('id')
             ->paginate(20);
 
         return $this->paginatedResponse($reminders);

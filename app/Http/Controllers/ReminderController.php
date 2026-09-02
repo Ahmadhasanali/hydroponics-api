@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ReminderStatus;
 use App\Http\Requests\Reminder\StoreReminderRequest;
 use App\Http\Requests\Reminder\UpdateReminderRequest;
 use App\Models\Farm;
@@ -33,8 +34,7 @@ class ReminderController extends Controller
         $query = Reminder::query()
             ->whereIn('id', $visibleIds)
             ->with('targets.targetable', 'occurrences')
-            ->with('farm:id,name')
-            ->orderByDesc('starts_at');
+            ->with('farm:id,name');
 
         $farmId = $request->integer('farm_id');
         if ($farmId) {
@@ -47,6 +47,25 @@ class ReminderController extends Controller
             $query->history();
         } elseif ($request->boolean('upcoming')) {
             $query->upcoming();
+        }
+
+        // Urutkan: upcoming/aktif -> pengingat paling dekat di atas (ASC),
+        // history -> terbaru di atas (DESC), default -> terdekat di atas.
+        if ($request->boolean('history')) {
+            $query->orderByDesc(
+                ReminderOccurrence::select('scheduled_at')
+                    ->whereColumn('reminder_occurrences.reminder_id', 'reminders.id')
+                    ->orderByDesc('scheduled_at')
+                    ->limit(1)
+            )->orderByDesc('starts_at')->orderByDesc('id');
+        } else {
+            $query->orderBy(
+                ReminderOccurrence::select('scheduled_at')
+                    ->whereColumn('reminder_occurrences.reminder_id', 'reminders.id')
+                    ->where('status', ReminderStatus::Pending->value)
+                    ->orderBy('scheduled_at')
+                    ->limit(1)
+            )->orderBy('starts_at')->orderBy('id');
         }
 
         $reminders = $query->paginate(30);
