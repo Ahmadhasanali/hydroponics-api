@@ -144,4 +144,8 @@ return [
         'reappear_days' => (int) env('REMINDER_REAPPEAR_DAYS', 2),
     ],
 
+    'sales' => [
+        'reminder_advance_minutes' => (int) env('SALES_REMINDER_ADVANCE_MINUTES', 1440),
+    ],
+
 ];

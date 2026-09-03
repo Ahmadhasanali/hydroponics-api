@@ -56,6 +56,8 @@ class SalesService
                 ], allowTotalCheck: false);
             }
 
+            app(SaleReminderService::class)->createForSale($sale, $user);
+
             return $sale->load(['customer', 'items', 'payments']);
         });
     }
@@ -91,6 +93,8 @@ class SalesService
             ]);
 
             $this->syncFinancialTransaction($user, $payment);
+
+            app(SaleReminderService::class)->markDoneIfPaid($sale->fresh());
 
             return $payment;
         });
@@ -161,6 +165,8 @@ class SalesService
             });
 
             $sale->delete();
+
+            app(SaleReminderService::class)->deactivateForSale($sale);
         });
     }
 
@@ -181,7 +187,7 @@ class SalesService
             $this->assertProductsInFarm($farm, $normalizedForCheck);
         }
 
-        return DB::transaction(function () use ($sale, $payload, $paid): Sale {
+        $updated = DB::transaction(function () use ($sale, $payload, $paid): Sale {
             if (isset($payload['items'])) {
                 $newTotal = array_sum(array_column($this->normalizeItems($payload['items']), 'subtotal'));
                 if ($paid > $newTotal + 0.0001) {
@@ -206,6 +212,10 @@ class SalesService
 
             return $sale->fresh(['customer', 'items', 'payments']);
         });
+
+        app(SaleReminderService::class)->syncAfterSaleUpdate($updated->fresh());
+
+        return $updated;
     }
 
     public function paidAmount(Sale $sale): float

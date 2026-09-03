@@ -107,7 +107,7 @@ class ReminderDispatchService
         foreach ($reminder->targets as $target) {
             $recipient = $target->targetable;
 
-            if (! $recipient) {
+            if (! $recipient instanceof User && ! $recipient instanceof Staff) {
                 continue;
             }
 
