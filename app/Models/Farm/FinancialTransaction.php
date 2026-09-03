@@ -26,6 +26,7 @@ class FinancialTransaction extends Model
         'user_id',
         'staff_id',
         'note',
+        'account_id',
     ];
 
     protected function casts(): array
@@ -60,5 +61,10 @@ class FinancialTransaction extends Model
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
     }
 }
