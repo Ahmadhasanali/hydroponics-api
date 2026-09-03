@@ -23,7 +23,9 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Sales\AccountController;
 use App\Http\Controllers\Sales\AccountTransferController;
 use App\Http\Controllers\Sales\CustomerController;
+use App\Http\Controllers\Sales\PaymentController;
 use App\Http\Controllers\Sales\ProductController;
+use App\Http\Controllers\Sales\SaleController;
 use App\Http\Controllers\Staff\StaffAuthController;
 use App\Http\Controllers\Staff\StaffDashboardController;
 use App\Http\Controllers\Staff\StaffMonitoringController;
@@ -140,6 +142,14 @@ Route::prefix('v1')->group(function () {
         // Sales: Customers & Products
         Route::apiResource('customers', CustomerController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::apiResource('products', ProductController::class)->only(['index', 'store', 'update', 'destroy']);
+
+        // Sales
+        Route::get('sales/receivables/summary', [SaleController::class, 'receivableSummary']);
+        Route::get('sales/receivables', [SaleController::class, 'receivables']);
+        Route::apiResource('sales', SaleController::class);
+        Route::post('sales/{sale}/payments', [PaymentController::class, 'store']);
+        Route::put('payments/{payment}', [PaymentController::class, 'update']);
+        Route::delete('payments/{payment}', [PaymentController::class, 'destroy']);
 
         // Telegram
         Route::post('telegram/link-code', [TelegramController::class, 'linkCode'])->middleware('throttle:5,1');
