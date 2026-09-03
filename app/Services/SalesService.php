@@ -66,6 +66,9 @@ class SalesService
             throw new InvalidArgumentException('Total penjualan tidak valid.');
         }
 
+        $farm = $sale->farm ?? Farm::findOrFail($sale->farm_id);
+        $this->assertAccount($farm, (int) $payload['account_id']);
+
         return DB::transaction(function () use ($user, $sale, $payload): Payment {
             $amount = (float) $payload['amount'];
 
@@ -96,6 +99,11 @@ class SalesService
     public function updatePayment(User $user, Payment $payment, array $payload): Payment
     {
         $sale = $payment->sale;
+        if (! $sale) {
+            $sale = $payment->sale()->firstOrFail();
+        }
+        $farm = $sale->farm ?? Farm::findOrFail($sale->farm_id);
+        $this->assertAccount($farm, (int) $payload['account_id']);
 
         return DB::transaction(function () use ($user, $sale, $payment, $payload): Payment {
             $amount = (float) $payload['amount'];
@@ -159,6 +167,19 @@ class SalesService
     public function updateSale(User $user, Sale $sale, array $payload): Sale
     {
         $paid = $this->paidAmount($sale);
+        $farm = $sale->farm ?? Farm::findOrFail($sale->farm_id);
+
+        if (isset($payload['customer_id'])) {
+            $this->assertCustomerInFarm($farm, (int) $payload['customer_id']);
+        }
+
+        if (isset($payload['items'])) {
+            $normalizedForCheck = $this->normalizeItems($payload['items']);
+            if ($normalizedForCheck === []) {
+                throw new InvalidArgumentException('Penjualan minimal memiliki satu item.');
+            }
+            $this->assertProductsInFarm($farm, $normalizedForCheck);
+        }
 
         return DB::transaction(function () use ($sale, $payload, $paid): Sale {
             if (isset($payload['items'])) {
@@ -216,12 +237,31 @@ class SalesService
     {
         $result = [];
         foreach ($items as $item) {
-            $qty = (float) $item['qty'];
-            $price = (float) $item['price'];
+            $unit = $item['unit'] ?? null;
+            if (! in_array($unit, ['kg', 'pcs'], true)) {
+                throw new InvalidArgumentException('Satuan item tidak valid.');
+            }
+
+            $qty = (float) ($item['qty'] ?? 0);
+            $price = (float) ($item['price'] ?? 0);
+
+            if ($qty <= 0) {
+                throw new InvalidArgumentException('Qty item harus lebih dari 0.');
+            }
+
+            if ($price < 0) {
+                throw new InvalidArgumentException('Harga item tidak valid.');
+            }
+
+            $productName = $item['product_name'] ?? null;
+            if (($item['product_id'] ?? null) === null && ($productName === null || trim((string) $productName) === '')) {
+                throw new InvalidArgumentException('Nama produk wajib diisi bila tanpa product_id.');
+            }
+
             $result[] = [
                 'product_id' => isset($item['product_id']) ? (int) $item['product_id'] : null,
-                'product_name' => $item['product_name'],
-                'unit' => $item['unit'],
+                'product_name' => (string) $productName,
+                'unit' => (string) $unit,
                 'qty' => $qty,
                 'price' => $price,
                 'subtotal' => round($qty * $price, 2),

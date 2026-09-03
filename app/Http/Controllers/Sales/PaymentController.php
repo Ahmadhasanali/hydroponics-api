@@ -60,12 +60,12 @@ class PaymentController extends Controller
         return $this->successResponse(['payment' => $payment->fresh('account')], 'Pembayaran berhasil diperbarui.');
     }
 
-    public function destroy(Payment $payment): JsonResponse
+    public function destroy(Request $request, Payment $payment): JsonResponse
     {
         $farm = Farm::findOrFail($payment->sale->farm_id);
         $this->authorize('manageSales', $farm);
 
-        $this->sales->deletePayment(request()->user(), $payment);
+        $this->sales->deletePayment($request->user(), $payment);
 
         return $this->successResponse(null, 'Pembayaran dihapus.');
     }
