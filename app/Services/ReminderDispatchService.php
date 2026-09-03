@@ -3,17 +3,21 @@
 namespace App\Services;
 
 use App\Enums\ReminderStatus;
+use App\Models\Farm\Sale;
 use App\Models\Farm\Staff;
+use App\Models\MessagingAccount;
 use App\Models\Reminder;
 use App\Models\Reminder\ReminderNotificationDelivery;
 use App\Models\Reminder\ReminderOccurrence;
 use App\Models\User;
+use App\Services\TelegramService;
 
 class ReminderDispatchService
 {
     public function __construct(
         private readonly ReminderRecurrenceService $recurrence,
         private readonly PushNotificationService $push,
+        private readonly TelegramService $telegram,
     ) {}
 
     public function dispatchDue(): void
@@ -104,6 +108,10 @@ class ReminderDispatchService
 
     private function sendToTargets(Reminder $reminder, ReminderOccurrence $occurrence, string $title, string $body, ?string $url = null, string $kind = 'main'): void
     {
+        $isReceivableReminder = $reminder->targets->contains(
+            fn ($target) => $target->targetable instanceof Sale,
+        );
+
         foreach ($reminder->targets as $target) {
             $recipient = $target->targetable;
 
@@ -117,6 +125,11 @@ class ReminderDispatchService
 
             $this->push->sendToUser($recipient, $title, $body, $recipientUrl);
 
+            // Reminder piutang ikut dikirim ke Telegram user (tagih warung).
+            if ($isReceivableReminder && $recipient instanceof User) {
+                $this->sendReceivableTelegram($recipient, $title, $body);
+            }
+
             ReminderNotificationDelivery::query()->create([
                 'reminder_id' => $reminder->id,
                 'occurrence_id' => $occurrence->id,
@@ -126,6 +139,20 @@ class ReminderDispatchService
                 'sent_at' => now(),
             ]);
         }
+    }
+
+    private function sendReceivableTelegram(User $user, string $title, string $body): void
+    {
+        $account = MessagingAccount::query()
+            ->where('user_id', $user->id)
+            ->where('channel', 'telegram')
+            ->first();
+
+        if (! $account || empty($account->external_id)) {
+            return;
+        }
+
+        $this->telegram->sendMessage($account->external_id, "<b>{$title}</b>\n{$body}");
     }
 
     private function recipientUrl(Reminder $reminder, User|Staff $recipient): string

@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\ChatTools\CreateSaleTool;
 use App\ChatTools\CreateTransactionTool;
 use App\ChatTools\GetFinancialSummaryTool;
+use App\ChatTools\GetReceivablesTool;
 use App\ChatTools\ListCustomersTool;
 use App\ChatTools\ListProductsTool;
 use App\Models\Farm;
@@ -76,7 +77,7 @@ class ProcessTelegramUpdate implements ShouldQueue
         try {
             $result = $gemini->generate(
                 [['role' => 'user', 'content' => $text]],
-                ['create_financial_transaction', 'get_financial_summary', 'create_sale', 'list_customers', 'list_products'],
+                ['create_financial_transaction', 'get_financial_summary', 'get_receivables', 'create_sale', 'list_customers', 'list_products'],
             );
         } catch (\Throwable $e) {
             $telegram->sendMessage($chatId, 'Maaf, AI sibuk. Coba kirim ulang dalam 1 menit.');
@@ -123,6 +124,22 @@ class ProcessTelegramUpdate implements ShouldQueue
             $this->handleCreateTransaction($telegram, $account, $chatId, $args);
 
             return;
+        }
+
+        // Jika Gemini mengembalikan get_receivables, handle langsung.
+        foreach ($calls as $c) {
+            if (($c['name'] ?? null) === 'get_receivables') {
+                $tool = app(GetReceivablesTool::class);
+                $res = $tool->handle($c['args'] ?? [], $account->user);
+                if (isset($res['error'])) {
+                    $telegram->sendMessage($chatId, $res['error']);
+
+                    return;
+                }
+                $telegram->sendMessage($chatId, $this->formatReceivablesText($res['data']));
+
+                return;
+            }
         }
 
         // Jika Gemini mengembalikan get_financial_summary, handle langsung.
@@ -308,6 +325,37 @@ class ProcessTelegramUpdate implements ShouldQueue
             $lines = array_map(fn ($p) => "• {$p['name']} ({$p['unit']}) — Rp ".number_format($p['default_price'], 0, ',', '.'), $items);
             $telegram->sendMessage($chatId, "Daftar produk:\n".implode("\n", $lines));
         }
+    }
+
+    private function formatReceivablesText(mixed $data): string
+    {
+        $items = isset($data['farm_name']) ? [$data] : (is_array($data) ? array_values($data) : []);
+        $blocks = [];
+
+        foreach ($items as $farm) {
+            $lines = ['Piutang '.($farm['farm_name'] ?? 'farm').':'];
+            $total = (float) ($farm['total_remaining'] ?? 0);
+            $overdue = (int) ($farm['overdue_count'] ?? 0);
+            $lines[] = 'Total tagihan: Rp '.number_format($total, 0, ',', '.').' ('.$farm['customer_count'].' warung'.($overdue > 0 ? ", {$overdue} jatuh tempo" : '').')';
+
+            $receivables = $farm['receivables'] ?? [];
+            if ($receivables === []) {
+                $lines[] = 'Tidak ada piutang belum lunas.';
+            } else {
+                foreach ($receivables as $r) {
+                    $flag = ! empty($r['overdue']) ? ' ⚠️' : '';
+                    $tempo = $r['due_date'] ? ' (tempo '.$r['due_date'].')' : '';
+                    $lines[] = '• '.$r['customer'].$flag.': Rp '.number_format((float) $r['remaining'], 0, ',', '.').$tempo;
+                }
+                if (count($receivables) === 10) {
+                    $lines[] = '…dan lainnya. Tanyakan detail per warung bila perlu.';
+                }
+            }
+
+            $blocks[] = implode("\n", $lines);
+        }
+
+        return implode("\n\n", $blocks);
     }
 
     private function formatSaleSummary(array $data): string
