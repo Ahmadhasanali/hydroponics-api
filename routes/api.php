@@ -20,6 +20,7 @@ use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\Sales\AccountController;
 use App\Http\Controllers\Sales\CustomerController;
 use App\Http\Controllers\Sales\ProductController;
 use App\Http\Controllers\Staff\StaffAuthController;
@@ -125,6 +126,12 @@ Route::prefix('v1')->group(function () {
         Route::get('financial-transactions/summary', [FinancialTransactionController::class, 'summary']);
         Route::apiResource('financial-transactions', FinancialTransactionController::class)
             ->parameters(['financial-transactions' => 'financialTransaction']);
+
+        // Sales: Accounts
+        Route::get('accounts/{account}/balance', [AccountController::class, 'balance']);
+        Route::get('accounts/{account}/adjustments', [AccountController::class, 'adjustments']);
+        Route::post('accounts/{account}/adjustments', [AccountController::class, 'storeAdjustment']);
+        Route::apiResource('accounts', AccountController::class)->only(['index', 'store', 'update', 'destroy']);
 
         // Sales: Customers & Products
         Route::apiResource('customers', CustomerController::class)->only(['index', 'store', 'update', 'destroy']);
