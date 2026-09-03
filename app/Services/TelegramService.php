@@ -58,7 +58,7 @@ class TelegramService
         return ['inline_keyboard' => [[['text' => 'Ya ✅', 'callback_data' => "confirm:{$pendingId}"], ['text' => 'Batal ❌', 'callback_data' => "cancel:{$pendingId}"]]]];
     }
 
-    public function buildFarmKeyboard(array $farms, int $pendingId, ?int $defaultFarmId): array
+    public function buildFarmKeyboard(array $farms, int $pendingId, ?int $defaultFarmId, string $prefix = 'farm_pick'): array
     {
         $rows = [];
 
@@ -71,7 +71,7 @@ class TelegramService
 
         foreach ($farms as $f) {
             $label = $f['name'].($f['id'] == $defaultFarmId ? ' ⭐️' : '');
-            $rows[] = [['text' => $label, 'callback_data' => "farm_pick:{$f['id']}:{$pendingId}"]];
+            $rows[] = [['text' => $label, 'callback_data' => "{$prefix}:{$f['id']}:{$pendingId}"]];
         }
 
         return ['inline_keyboard' => $rows];
@@ -86,5 +86,10 @@ class TelegramService
         }
 
         return ['inline_keyboard' => $rows];
+    }
+
+    public function buildSaleConfirmKeyboard(int $pendingId): array
+    {
+        return ['inline_keyboard' => [[['text' => 'Ya ✅', 'callback_data' => "sale_confirm:{$pendingId}"], ['text' => 'Batal ❌', 'callback_data' => "sale_cancel:{$pendingId}"]]]];
     }
 }
