@@ -20,6 +20,8 @@ use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\RegistrationController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\Sales\CustomerController;
+use App\Http\Controllers\Sales\ProductController;
 use App\Http\Controllers\Staff\StaffAuthController;
 use App\Http\Controllers\Staff\StaffDashboardController;
 use App\Http\Controllers\Staff\StaffMonitoringController;
@@ -123,6 +125,10 @@ Route::prefix('v1')->group(function () {
         Route::get('financial-transactions/summary', [FinancialTransactionController::class, 'summary']);
         Route::apiResource('financial-transactions', FinancialTransactionController::class)
             ->parameters(['financial-transactions' => 'financialTransaction']);
+
+        // Sales: Customers & Products
+        Route::apiResource('customers', CustomerController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::apiResource('products', ProductController::class)->only(['index', 'store', 'update', 'destroy']);
 
         // Telegram
         Route::post('telegram/link-code', [TelegramController::class, 'linkCode'])->middleware('throttle:5,1');
