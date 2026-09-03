@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Farm\StoreFarmRequest;
 use App\Http\Requests\Farm\UpdateFarmRequest;
 use App\Models\Farm;
+use App\Services\AccountBalanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,10 +23,16 @@ class FarmController extends Controller
 
     public function store(StoreFarmRequest $request): JsonResponse
     {
-        $farm = Farm::query()->create(
-            $request->validated() + ['created_by' => $request->user()->id]
-        );
-        $farm->users()->attach($request->user()->id, ['role' => 'owner']);
+        $farm = DB::transaction(function () use ($request) {
+            $farm = Farm::query()->create(
+                $request->validated() + ['created_by' => $request->user()->id]
+            );
+            $farm->users()->attach($request->user()->id, ['role' => 'owner']);
+
+            app(AccountBalanceService::class)->ensureDefaultAccount($farm->id);
+
+            return $farm;
+        });
 
         return $this->successResponse(['farm' => $farm], 'Farm berhasil ditambahkan.', 201);
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Farm;
+use App\Models\Farm\Account;
 use App\Models\Farm\FinancialCategory;
 use App\Models\Farm\FinancialTransaction;
 use App\Services\FinanceService;
@@ -73,6 +74,7 @@ class FinancialTransactionController extends Controller
 
         $farm = Farm::findOrFail($validated['farm_id']);
         $this->authorize('manageFinance', $farm);
+        $this->assertAccountBelongsToFarm($farm, $validated['account_id'] ?? null);
 
         $category = $this->resolveCategory($farm, $validated['category_id'], $validated['type']);
         if (! $category instanceof FinancialCategory) {
@@ -106,6 +108,7 @@ class FinancialTransactionController extends Controller
         $this->authorize('manageFinance', $farm);
 
         $validated = $this->validatePayload($request);
+        $this->assertAccountBelongsToFarm($farm, $validated['account_id'] ?? null);
         unset($validated['farm_id']);
         $category = $this->resolveCategory($farm, $validated['category_id'], $validated['type']);
         if (! $category instanceof FinancialCategory) {
@@ -142,7 +145,25 @@ class FinancialTransactionController extends Controller
             'amount' => 'required|numeric|min:0.01|max:9999999999.99',
             'transaction_date' => 'required|date|before_or_equal:today',
             'note' => 'nullable|string|max:1000',
+            'account_id' => ['nullable', 'integer', Rule::exists('accounts', 'id')->where(fn ($q) => $q->whereNull('deleted_at'))],
         ]);
+    }
+
+    private function assertAccountBelongsToFarm(Farm $farm, ?int $accountId): void
+    {
+        if ($accountId === null) {
+            return;
+        }
+
+        $exists = Account::query()
+            ->where('id', $accountId)
+            ->where('farm_id', $farm->id)
+            ->where('is_active', true)
+            ->exists();
+
+        if (! $exists) {
+            abort(422, 'Akun tidak ditemukan untuk farm ini.');
+        }
     }
 
     private function resolveCategory(Farm $farm, int $categoryId, string $type): JsonResponse|FinancialCategory
