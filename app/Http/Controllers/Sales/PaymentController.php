@@ -41,7 +41,8 @@ class PaymentController extends Controller
 
     public function update(Request $request, Payment $payment): JsonResponse
     {
-        $farm = Farm::findOrFail($payment->sale->farm_id);
+        $sale = $payment->sale()->withTrashed()->firstOrFail();
+        $farm = Farm::findOrFail($sale->farm_id);
         $this->authorize('manageSales', $farm);
 
         $validated = $request->validate([
@@ -62,7 +63,8 @@ class PaymentController extends Controller
 
     public function destroy(Request $request, Payment $payment): JsonResponse
     {
-        $farm = Farm::findOrFail($payment->sale->farm_id);
+        $sale = $payment->sale()->withTrashed()->firstOrFail();
+        $farm = Farm::findOrFail($sale->farm_id);
         $this->authorize('manageSales', $farm);
 
         $this->sales->deletePayment($request->user(), $payment);

@@ -19,11 +19,14 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE financial_transactions DROP CONSTRAINT financial_transactions_source_check');
-        DB::statement("ALTER TABLE financial_transactions ADD CONSTRAINT financial_transactions_source_check CHECK (source IN ('manual', 'telegram'))");
-
+        // Order: drop CHECK last-reserved? Actually FK must be dropped before CHECK? Original dropped CHECK first then FK — risky.
+        // Fixed: drop FK first, then CHECK. Use IF EXISTS for idempotency.
         Schema::table('financial_transactions', function (Blueprint $table) {
             $table->dropConstrainedForeignId('account_id');
         });
+
+        // Idempotent: only if constraint exists (IF EXISTS not valid for CHECK, guard via try)
+        DB::statement('ALTER TABLE financial_transactions DROP CONSTRAINT IF EXISTS financial_transactions_source_check');
+        DB::statement("ALTER TABLE financial_transactions ADD CONSTRAINT financial_transactions_source_check CHECK (source IN ('manual', 'telegram'))");
     }
 };

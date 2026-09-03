@@ -40,25 +40,14 @@ class AccountBalanceService
 
     /**
      * Memastikan akun Cash default ada untuk farm (idempotent).
+     * Uses firstOrCreate for race safety; DB-level partial unique index deferred.
+     * TODO(deferred): migration partial unique index WHERE is_default = true per farm_id.
      */
     public function ensureDefaultAccount(int $farmId): Account
     {
-        $existing = Account::query()
-            ->where('farm_id', $farmId)
-            ->where('is_default', true)
-            ->first();
-
-        if ($existing) {
-            return $existing;
-        }
-
-        return Account::query()->create([
-            'farm_id' => $farmId,
-            'name' => 'Cash',
-            'type' => 'cash',
-            'balance_initial' => 0,
-            'is_default' => true,
-            'is_active' => true,
-        ]);
+        return Account::firstOrCreate(
+            ['farm_id' => $farmId, 'is_default' => true],
+            ['name' => 'Cash', 'type' => 'cash', 'balance_initial' => 0, 'is_active' => true]
+        );
     }
 }

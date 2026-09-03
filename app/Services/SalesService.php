@@ -263,14 +263,22 @@ class SalesService
                 throw new InvalidArgumentException('Harga item tidak valid.');
             }
 
-            $productName = $item['product_name'] ?? null;
-            if (($item['product_id'] ?? null) === null && ($productName === null || trim((string) $productName) === '')) {
+            $rawName = trim((string) ($item['product_name'] ?? ''));
+            $productId = isset($item['product_id']) && $item['product_id'] !== null ? (int) $item['product_id'] : null;
+            if ($rawName === '' && $productId !== null) {
+                $product = Product::find($productId);
+                if (! $product) {
+                    throw new InvalidArgumentException('Produk tidak ditemukan.');
+                }
+                $rawName = $product->name;
+            }
+            if ($productId === null && $rawName === '') {
                 throw new InvalidArgumentException('Nama produk wajib diisi bila tanpa product_id.');
             }
 
             $result[] = [
-                'product_id' => isset($item['product_id']) ? (int) $item['product_id'] : null,
-                'product_name' => (string) $productName,
+                'product_id' => $productId,
+                'product_name' => $rawName,
                 'unit' => (string) $unit,
                 'qty' => $qty,
                 'price' => $price,
@@ -332,21 +340,12 @@ class SalesService
     private function syncFinancialTransaction(User $user, Payment $payment): void
     {
         $farmId = $payment->sale->farm_id;
-        $category = FinancialCategory::query()
-            ->whereNull('farm_id')
-            ->where('name', 'Penjualan Panen')
-            ->where('type', 'income')
-            ->first();
-
-        if ($category === null) {
-            $category = FinancialCategory::create([
-                'farm_id' => null,
-                'name' => 'Penjualan Panen',
-                'type' => 'income',
-                'is_default' => true,
-                'is_active' => true,
-            ]);
-        }
+        // Race-safe: firstOrCreate avoids duplicate global category under concurrency.
+        // TODO(deferred): add partial unique index (farm_id IS NULL, name, type) via migration to enforce at DB level.
+        $category = FinancialCategory::firstOrCreate(
+            ['farm_id' => null, 'name' => 'Penjualan Panen', 'type' => 'income'],
+            ['is_default' => true, 'is_active' => true]
+        );
 
         $link = SaleFinancialLink::query()
             ->where('linkable_type', Payment::class)

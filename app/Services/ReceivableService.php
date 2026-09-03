@@ -16,6 +16,8 @@ class ReceivableService
         $status = $filters['status'] ?? null;
         $today = Carbon::today()->toDateString();
 
+        // TODO(deferred MVP): PHP filtering + per-sale paidAmount N+1 intentional for correctness across DBs.
+        // Batch optimization (subquery remaining) deferred until receivables >1k/farm.
         // Ambil semua sale farm, lalu filter di PHP: deterministik & aman lintas DB.
         $sales = Sale::query()
             ->where('farm_id', $farm->id)
@@ -59,6 +61,7 @@ class ReceivableService
 
     public function summary(Farm $farm): array
     {
+        // TODO(deferred MVP): same N+1 note as receivables() — intentional MVP.
         $sales = Sale::query()
             ->where('farm_id', $farm->id)
             ->with('payments')

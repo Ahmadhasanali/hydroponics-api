@@ -20,6 +20,8 @@ class AccountController extends Controller
         $farm = Farm::findOrFail($validated['farm_id']);
         $this->authorize('viewSales', $farm);
 
+        // TODO(deferred MVP): N+1 balance — 5 SUMs per account. Intentional for small account counts (<20/farm).
+        // If scaling needed, batch query payments/financial_transactions/transfers/adjustments grouped by account.
         $accounts = Account::query()
             ->where('farm_id', $farm->id)
             ->orderBy('is_default', 'desc')
