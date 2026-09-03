@@ -6,6 +6,7 @@ use App\Models\Farm;
 use App\Models\Farm\Account;
 use App\Models\Farm\FinancialCategory;
 use App\Models\Farm\FinancialTransaction;
+use App\Services\AccountBalanceService;
 use App\Services\FinanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,6 +15,8 @@ use Illuminate\Validation\Rule;
 
 class FinancialTransactionController extends Controller
 {
+    public function __construct(private readonly AccountBalanceService $balanceService) {}
+
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -74,14 +77,17 @@ class FinancialTransactionController extends Controller
 
         $farm = Farm::findOrFail($validated['farm_id']);
         $this->authorize('manageFinance', $farm);
-        $this->assertAccountBelongsToFarm($farm, $validated['account_id'] ?? null);
 
         $category = $this->resolveCategory($farm, $validated['category_id'], $validated['type']);
         if (! $category instanceof FinancialCategory) {
             return $category;
         }
 
+        $accountId = $this->resolveAccountId($farm, $validated['account_id'] ?? null);
+        unset($validated['account_id']);
+
         $transaction = FinancialTransaction::create($validated + [
+            'account_id' => $accountId,
             'user_id' => $request->user()->id,
             'source' => 'manual',
             'status' => 'approved',
@@ -108,14 +114,14 @@ class FinancialTransactionController extends Controller
         $this->authorize('manageFinance', $farm);
 
         $validated = $this->validatePayload($request);
-        $this->assertAccountBelongsToFarm($farm, $validated['account_id'] ?? null);
-        unset($validated['farm_id']);
+        $accountId = $this->resolveAccountId($farm, $validated['account_id'] ?? null);
+        unset($validated['farm_id'], $validated['account_id']);
         $category = $this->resolveCategory($farm, $validated['category_id'], $validated['type']);
         if (! $category instanceof FinancialCategory) {
             return $category;
         }
 
-        $financialTransaction->update($validated);
+        $financialTransaction->update($validated + ['account_id' => $accountId]);
 
         return $this->successResponse(
             ['transaction' => $financialTransaction->fresh(['category'])],
@@ -164,6 +170,20 @@ class FinancialTransactionController extends Controller
         if (! $exists) {
             abort(422, 'Akun tidak ditemukan untuk farm ini.');
         }
+    }
+
+    /**
+     * Saat akun tidak dipilih, transaksi otomatis tercatat ke akun Cash default farm.
+     */
+    private function resolveAccountId(Farm $farm, ?int $accountId): int
+    {
+        if ($accountId !== null) {
+            $this->assertAccountBelongsToFarm($farm, $accountId);
+
+            return $accountId;
+        }
+
+        return $this->balanceService->ensureDefaultAccount($farm->id)->id;
     }
 
     private function resolveCategory(Farm $farm, int $categoryId, string $type): JsonResponse|FinancialCategory

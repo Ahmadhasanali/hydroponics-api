@@ -69,6 +69,31 @@ class FinancialTransactionApiTest extends TestCase
         ]);
     }
 
+    public function test_store_defaults_to_default_cash_account_when_account_omitted(): void
+    {
+        $this->actingAs($this->owner)
+            ->postJson('/api/v1/financial-transactions', $this->payload())
+            ->assertCreated();
+
+        $this->assertDatabaseHas('accounts', [
+            'farm_id' => $this->farm->id,
+            'type' => 'cash',
+            'is_default' => true,
+        ]);
+
+        $cash = \App\Models\Farm\Account::query()
+            ->where('farm_id', $this->farm->id)
+            ->where('type', 'cash')
+            ->where('is_default', true)
+            ->firstOrFail();
+
+        $this->assertDatabaseHas('financial_transactions', [
+            'farm_id' => $this->farm->id,
+            'account_id' => $cash->id,
+            'amount' => 25000,
+        ]);
+    }
+
     public function test_store_rejects_future_date(): void
     {
         $this->actingAs($this->owner)
