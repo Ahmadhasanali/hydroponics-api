@@ -60,4 +60,17 @@ class FarmPolicy
     {
         return $this->viewFinance($user, $farm);
     }
+
+    public function viewSales(User $user, Farm $farm): bool
+    {
+        return $farm->users()
+            ->where('user_id', $user->id)
+            ->wherePivotIn('role', ['owner', 'manager'])
+            ->exists();
+    }
+
+    public function manageSales(User $user, Farm $farm): bool
+    {
+        return $this->viewSales($user, $farm);
+    }
 }
