@@ -1,0 +1,63 @@
+name: Deploy Demo
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEMO_API_PATH: /home/deploy/project/hydroponic/demo/api
+  DEMO_ROOT: /home/deploy/project/hydroponic/demo
+  DEMO_COMPOSE_FILE: compose.yaml
+  DEMO_SERVICE: demo-hydroponic-api
+
+jobs:
+  deploy-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add host key
+        run: ssh-keyscan ${{ secrets.HOME_SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Check demo env exists
+        run: |
+          ssh ${{ secrets.HOME_SERVER_USER }}@${{ secrets.HOME_SERVER_HOST }} \
+            "test -f $DEMO_API_PATH/.env.demo || (echo 'MISS: $DEMO_API_PATH/.env.demo tidak ada (untracked, jangan di-commit). Buat dulu dari .env.demo.example' && exit 1)"
+
+      - name: Deploy demo API
+        run: |
+          ssh ${{ secrets.HOME_SERVER_USER }}@${{ secrets.HOME_SERVER_HOST }} \
+            "cd $DEMO_API_PATH && git fetch --all && git reset --hard origin/main && cd $DEMO_ROOT && docker compose -f $DEMO_COMPOSE_FILE up -d --build $DEMO_SERVICE"
+
+      - name: Run migrations (sqlite ephemeral)
+        run: |
+          ssh ${{ secrets.HOME_SERVER_USER }}@${{ secrets.HOME_SERVER_HOST }} \
+            "cd $DEMO_ROOT && docker compose -f $DEMO_COMPOSE_FILE exec -T $DEMO_SERVICE php artisan migrate --force"
+
+      - name: Seed demo account (idempotent)
+        run: |
+          ssh ${{ secrets.HOME_SERVER_USER }}@${{ secrets.HOME_SERVER_HOST }} \
+            "cd $DEMO_ROOT && docker compose -f $DEMO_COMPOSE_FILE exec -T $DEMO_SERVICE php artisan db:seed --class='Database\Seeders\DemoSeeder' --force"
+
+      - name: Optimize Laravel
+        run: |
+          ssh ${{ secrets.HOME_SERVER_USER }}@${{ secrets.HOME_SERVER_HOST }} \
+            "cd $DEMO_ROOT && docker compose -f $DEMO_COMPOSE_FILE exec -T $DEMO_SERVICE bash -c 'mkdir -p resources/views && php artisan optimize'"
