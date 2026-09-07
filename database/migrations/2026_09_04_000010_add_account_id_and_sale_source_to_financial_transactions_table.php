@@ -13,8 +13,13 @@ return new class extends Migration
             $table->foreignId('account_id')->nullable()->after('category_id')->constrained('accounts')->nullOnDelete();
         });
 
-        DB::statement('ALTER TABLE financial_transactions DROP CONSTRAINT financial_transactions_source_check');
-        DB::statement("ALTER TABLE financial_transactions ADD CONSTRAINT financial_transactions_source_check CHECK (source IN ('manual', 'telegram', 'sale'))");
+        // CHECK constraint hanya untuk pgsql/mysql. SQLite tidak support
+        // ALTER TABLE ... DROP/ADD CONSTRAINT — validasi source dijamin
+        // di FormRequest + model, jadi skip aman untuk demo sqlite.
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE financial_transactions DROP CONSTRAINT financial_transactions_source_check');
+            DB::statement("ALTER TABLE financial_transactions ADD CONSTRAINT financial_transactions_source_check CHECK (source IN ('manual', 'telegram', 'sale'))");
+        }
     }
 
     public function down(): void
@@ -25,8 +30,10 @@ return new class extends Migration
             $table->dropConstrainedForeignId('account_id');
         });
 
-        // Idempotent: only if constraint exists (IF EXISTS not valid for CHECK, guard via try)
-        DB::statement('ALTER TABLE financial_transactions DROP CONSTRAINT IF EXISTS financial_transactions_source_check');
-        DB::statement("ALTER TABLE financial_transactions ADD CONSTRAINT financial_transactions_source_check CHECK (source IN ('manual', 'telegram'))");
+        if (DB::getDriverName() !== 'sqlite') {
+            // Idempotent: only if constraint exists (IF EXISTS not valid for CHECK, guard via try)
+            DB::statement('ALTER TABLE financial_transactions DROP CONSTRAINT IF EXISTS financial_transactions_source_check');
+            DB::statement("ALTER TABLE financial_transactions ADD CONSTRAINT financial_transactions_source_check CHECK (source IN ('manual', 'telegram'))");
+        }
     }
 };

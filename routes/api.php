@@ -43,13 +43,13 @@ Route::prefix('v1')->group(function () {
 
     // Auth (no auth required)
     Route::post('register', [RegistrationController::class, 'register'])
-        ->middleware('throttle:5,1');
+        ->middleware(['throttle:5,1', 'demo']);
     Route::post('login', [AuthController::class, 'login'])
         ->middleware('throttle:login');
     Route::post('password/forgot', [PasswordResetController::class, 'sendResetLinkEmail'])
-        ->middleware('throttle:6,1');
+        ->middleware(['throttle:6,1', 'demo']);
     Route::post('password/reset', [PasswordResetController::class, 'reset'])
-        ->middleware('throttle:6,1');
+        ->middleware(['throttle:6,1', 'demo']);
 
     Route::get('email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
         ->middleware('signed')->name('verification.verify');
@@ -64,7 +64,7 @@ Route::prefix('v1')->group(function () {
         Route::get('user', [AuthController::class, 'user']);
         Route::put('user', [ProfileController::class, 'update']);
         Route::post('email/resend-verification', [EmailVerificationController::class, 'send'])
-            ->middleware('throttle:6,1');
+            ->middleware(['throttle:6,1', 'demo']);
 
         // Dashboard
         Route::get('dashboard', [DashboardController::class, 'index']);
@@ -152,7 +152,7 @@ Route::prefix('v1')->group(function () {
         Route::delete('payments/{payment}', [PaymentController::class, 'destroy']);
 
         // Telegram
-        Route::post('telegram/link-code', [TelegramController::class, 'linkCode'])->middleware('throttle:5,1');
+        Route::post('telegram/link-code', [TelegramController::class, 'linkCode'])->middleware(['throttle:5,1', 'demo']);
         Route::get('telegram/status', [TelegramController::class, 'status']);
         Route::patch('telegram/default-farm', [TelegramController::class, 'updateDefaultFarm']);
         Route::post('telegram/unlink', [TelegramController::class, 'unlink']);

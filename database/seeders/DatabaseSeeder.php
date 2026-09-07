@@ -20,5 +20,11 @@ class DatabaseSeeder extends Seeder
             FarmSeeder::class,
             FinancialCategorySeeder::class,
         ]);
+
+        if ((bool) config('app.demo_mode')) {
+            $this->call([
+                DemoSeeder::class,
+            ]);
+        }
     }
 }

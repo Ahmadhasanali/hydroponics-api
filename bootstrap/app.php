@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\BlockInDemoMode;
 use App\Http\Middleware\EnsureStaff;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\EnsureUser;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'demo' => BlockInDemoMode::class,
             'superadmin' => EnsureSuperAdmin::class,
             'staff' => EnsureStaff::class,
             'user' => EnsureUser::class,
@@ -34,6 +36,11 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('chat:purge-deleted-sessions')->hourly();
+
+        // Demo portfolio: reset ephemeral demo DB hourly, no user data persists.
+        if ((bool) config('app.demo_mode')) {
+            $schedule->command('migrate:fresh --seed --force')->hourly();
+        }
 
         // Pengingat monitoring harian hanya aktif jika DAILY_REMINDER_HOUR diisi
         // (contoh: 08:00). Kosongkan/nonaktifkan di .env untuk mematikannya.

@@ -17,6 +17,9 @@ public_html/hot
 
 storage/*.key
 .env
+.env.*
+!.env.example
+!.env.demo.example
 Homestead.yaml
 Homestead.json
 /.vagrant
@@ -36,6 +39,7 @@ skills-lock.json
 
 # Local tooling
 .commandcode/
+.codex/
 .github/skills/
 
 # Capacitor Android build output
@@ -44,10 +48,25 @@ android/build/
 android/app/build/
 android/capacitor-cordova-android-plugins/
 
-# Firebase
-storage/app/firebase
+# Firebase (never commit service-account JSON)
+storage/app/firebase/
 
 # Google/FCM credentials (never commit)
 google-services.json
 android/app/google-services.json
 .local-bin/
+
+# Firebase Admin SDK (never commit — root file lives outside repo too)
+*-firebase-adminsdk-*.json
+**/*-firebase-adminsdk-*.json
+storage/app/firebase/
+
+# Demo / local SQLite (never commit — ephemeral)
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+/database/*.sqlite
+
+# Local agent/tooling state (never commit)
+.superpowers/

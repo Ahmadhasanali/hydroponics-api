@@ -4,6 +4,12 @@ return [
 
     'daily_reminder_hour' => env('DAILY_REMINDER_HOUR'),
 
+    'demo_mode' => (bool) env('DEMO_MODE', false),
+
+    'demo_email' => env('DEMO_EMAIL', 'demo@hydrofarm.id'),
+
+    'demo_password' => env('DEMO_PASSWORD', 'demo123456'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Name

@@ -49,6 +49,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libzip-dev \
         libxml2-dev \
         libcurl4-openssl-dev \
+        libsqlite3-dev \
+        sqlite3 \
         postgresql-client \
         cron \
     && rm -rf /var/lib/apt/lists/*
@@ -59,6 +61,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo_pgsql \
     && docker-php-ext-install pgsql \
+    && docker-php-ext-install pdo_sqlite \
     && docker-php-ext-install gd \
     && docker-php-ext-install intl \
     && docker-php-ext-install mbstring \
@@ -83,9 +86,10 @@ WORKDIR /var/www/html
 COPY --from=vendor --chown=www-data:www-data /app /var/www/html
 
 # Writable runtime directories
-RUN mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache resources/views \
-    && chown -R www-data:www-data storage bootstrap/cache public resources \
-    && chmod -R ug+rw storage bootstrap/cache
+RUN mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache resources/views database \
+    && touch database/database.sqlite \
+    && chown -R www-data:www-data storage bootstrap/cache public resources database \
+    && chmod -R ug+rw storage bootstrap/cache database
 
 # Create app user to match host UID/GID (rootless docker)
 RUN groupadd --force --gid "$WWWGROUP" app \
