@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DEPLOY_PATH: /home/deploy/project/hydroponics-api
+  DEPLOY_PATH: /home/deploy/project/hydroponic/prod
 
 jobs:
   deploy:
