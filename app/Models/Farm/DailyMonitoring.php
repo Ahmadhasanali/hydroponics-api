@@ -26,7 +26,7 @@ class DailyMonitoring extends Model
     protected function casts(): array
     {
         return [
-            'log_date' => 'date',
+            'log_date' => 'date:Y-m-d',
             'ppm' => 'decimal:2',
             'ph' => 'decimal:2',
             'water_temperature' => 'decimal:2',

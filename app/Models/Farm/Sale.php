@@ -23,8 +23,8 @@ class Sale extends Model
     protected function casts(): array
     {
         return [
-            'sale_date' => 'date',
-            'due_date' => 'date',
+            'sale_date' => 'date:Y-m-d',
+            'due_date' => 'date:Y-m-d',
             'total_amount' => 'decimal:2',
         ];
     }

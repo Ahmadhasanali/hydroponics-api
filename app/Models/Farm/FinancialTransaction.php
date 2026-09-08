@@ -33,7 +33,7 @@ class FinancialTransaction extends Model
     {
         return [
             'amount' => 'decimal:2',
-            'transaction_date' => 'date',
+            'transaction_date' => 'date:Y-m-d',
             'approved_at' => 'datetime',
         ];
     }

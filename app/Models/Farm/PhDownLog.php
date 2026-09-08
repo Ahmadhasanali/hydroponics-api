@@ -26,7 +26,7 @@ class PhDownLog extends Model
     protected function casts(): array
     {
         return [
-            'log_date' => 'date',
+            'log_date' => 'date:Y-m-d',
             'ph_before' => 'decimal:2',
             'ph_after' => 'decimal:2',
             'ph_down_ml' => 'decimal:2',

@@ -18,7 +18,7 @@ class TelegramPendingTransaction extends Model
 
     protected function casts(): array
     {
-        return ['amount' => 'decimal:2', 'transaction_date' => 'date', 'expires_at' => 'datetime'];
+        return ['amount' => 'decimal:2', 'transaction_date' => 'date:Y-m-d', 'expires_at' => 'datetime'];
     }
 
     public function account(): BelongsTo

@@ -18,7 +18,7 @@ class AccountBalanceAdjustment extends Model
     {
         return [
             'amount' => 'decimal:2',
-            'adjustment_date' => 'date',
+            'adjustment_date' => 'date:Y-m-d',
         ];
     }
 

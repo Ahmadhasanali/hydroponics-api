@@ -36,8 +36,8 @@ class TelegramPendingSale extends Model
         return [
             'items' => 'array',
             'amount_paid' => 'decimal:2',
-            'sale_date' => 'date',
-            'due_date' => 'date',
+            'sale_date' => 'date:Y-m-d',
+            'due_date' => 'date:Y-m-d',
             'expires_at' => 'datetime',
         ];
     }
