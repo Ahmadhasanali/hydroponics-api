@@ -21,7 +21,7 @@ RUN composer install \
     && composer dump-autoload --optimize
 
 # ---------- Stage 3: runtime (PHP-FPM + Nginx + Supervisor) ----------
-FROM php:8.5-fpm
+FROM php:8.5.12-fpm
 
 ARG WWWGROUP=1000
 ARG WWWUSER=1000
