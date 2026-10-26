@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Farm;
 use App\Models\Farm\Tank;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +17,8 @@ class TankController extends Controller
         if (! $farmId) {
             return $this->errorResponse('farm_id is required.', 422);
         }
+
+        Gate::authorize('view', Farm::findOrFail($farmId));
 
         $tanks = Tank::where('farm_id', $farmId)
             ->orderBy('id')
@@ -38,6 +41,8 @@ class TankController extends Controller
             'is_active' => 'boolean',
         ]);
 
+        Gate::authorize('update', Farm::findOrFail($validated['farm_id']));
+
         $exists = Tank::where('farm_id', $validated['farm_id'])
             ->where('name', $validated['name'])
             ->exists();
@@ -57,6 +62,8 @@ class TankController extends Controller
 
     public function show(Tank $tank): JsonResponse
     {
+        Gate::authorize('view', $tank->farm);
+
         $tank->load('creator');
 
         $monitorings = $tank->dailyMonitorings()
@@ -84,7 +91,7 @@ class TankController extends Controller
 
     public function update(Request $request, Tank $tank): JsonResponse
     {
-        Gate::authorize('view', $tank->farm);
+        Gate::authorize('update', $tank->farm);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -115,7 +122,7 @@ class TankController extends Controller
 
     public function destroy(Tank $tank): JsonResponse
     {
-        Gate::authorize('view', $tank->farm);
+        Gate::authorize('update', $tank->farm);
 
         $tank->delete();
 

@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Farm;
 use App\Models\Farm\DailyMonitoring;
 use App\Models\Farm\Tank;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class DailyMonitoringController extends Controller
 {
@@ -16,6 +18,8 @@ class DailyMonitoringController extends Controller
         if (! $farmId) {
             return $this->errorResponse('farm_id is required.', 422);
         }
+
+        Gate::authorize('view', Farm::findOrFail($farmId));
 
         $tankIds = Tank::where('farm_id', $farmId)->pluck('id');
 
@@ -38,7 +42,10 @@ class DailyMonitoringController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        $exists = DailyMonitoring::where('tank_id', $validated['tank_id'])
+        $tank = Tank::findOrFail($validated['tank_id']);
+        Gate::authorize('update', $tank->farm);
+
+        $exists = DailyMonitoring::where('tank_id', $tank->id)
             ->where('log_date', $validated['log_date'])
             ->exists();
 
@@ -48,7 +55,6 @@ class DailyMonitoringController extends Controller
             ]);
         }
 
-        $tank = Tank::find($validated['tank_id']);
         $warnings = $this->checkTargetRange($validated, $tank);
 
         $monitoring = DailyMonitoring::create($validated + ['user_id' => $request->user()->id]);
@@ -61,6 +67,8 @@ class DailyMonitoringController extends Controller
 
     public function show(DailyMonitoring $dailyMonitoring): JsonResponse
     {
+        Gate::authorize('view', $dailyMonitoring->tank->farm);
+
         $dailyMonitoring->load(['tank', 'user']);
 
         return $this->successResponse(['monitoring' => $dailyMonitoring]);
@@ -68,6 +76,8 @@ class DailyMonitoringController extends Controller
 
     public function update(Request $request, DailyMonitoring $dailyMonitoring): JsonResponse
     {
+        Gate::authorize('update', $dailyMonitoring->tank->farm);
+
         $validated = $request->validate([
             'tank_id' => 'required|exists:tanks,id',
             'log_date' => 'required|date',
@@ -77,7 +87,10 @@ class DailyMonitoringController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        $exists = DailyMonitoring::where('tank_id', $validated['tank_id'])
+        $tank = Tank::where('farm_id', $dailyMonitoring->tank->farm_id)
+            ->findOrFail($validated['tank_id']);
+
+        $exists = DailyMonitoring::where('tank_id', $tank->id)
             ->where('log_date', $validated['log_date'])
             ->where('id', '!=', $dailyMonitoring->id)
             ->exists();
@@ -88,7 +101,6 @@ class DailyMonitoringController extends Controller
             ]);
         }
 
-        $tank = Tank::find($validated['tank_id']);
         $warnings = $this->checkTargetRange($validated, $tank);
 
         $dailyMonitoring->update($validated);
@@ -101,6 +113,8 @@ class DailyMonitoringController extends Controller
 
     public function destroy(DailyMonitoring $dailyMonitoring): JsonResponse
     {
+        Gate::authorize('update', $dailyMonitoring->tank->farm);
+
         $dailyMonitoring->delete();
 
         return $this->successResponse(null, 'Data monitoring berhasil dihapus.');

@@ -39,6 +39,8 @@ class FarmController extends Controller
 
     public function show(Farm $farm): JsonResponse
     {
+        Gate::authorize('view', $farm);
+
         $farm->load([
             'tanks',
             'users' => function ($query) {

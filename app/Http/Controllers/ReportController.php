@@ -2,16 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Farm;
 use App\Models\Farm\DailyMonitoring;
 use App\Models\Farm\NutrientAddition;
 use App\Models\Farm\PhDownLog;
+use App\Models\Farm\Tank;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class ReportController extends Controller
 {
     public function monitoring(Request $request): JsonResponse
     {
+        $this->authorizeReportScope($request);
+
         $farmId = $request->integer('farm_id');
         $tankId = $request->input('tank_id');
         $startDate = $request->input('start_date');
@@ -38,6 +43,8 @@ class ReportController extends Controller
 
     public function nutrient(Request $request): JsonResponse
     {
+        $this->authorizeReportScope($request);
+
         $farmId = $request->integer('farm_id');
         $tankId = $request->input('tank_id');
         $startDate = $request->input('start_date');
@@ -60,6 +67,8 @@ class ReportController extends Controller
 
     public function phDown(Request $request): JsonResponse
     {
+        $this->authorizeReportScope($request);
+
         $farmId = $request->integer('farm_id');
         $tankId = $request->input('tank_id');
         $startDate = $request->input('start_date');
@@ -77,5 +86,25 @@ class ReportController extends Controller
         }
 
         return $this->successResponse(['aggregates' => $aggregates]);
+    }
+
+    private function authorizeReportScope(Request $request): void
+    {
+        $farmId = $request->integer('farm_id');
+
+        if (! $farmId) {
+            return;
+        }
+
+        Gate::authorize('view', Farm::findOrFail($farmId));
+
+        $tankId = $request->input('tank_id');
+
+        if ($tankId) {
+            abort_unless(
+                Tank::where('farm_id', $farmId)->whereKey($tankId)->exists(),
+                403,
+            );
+        }
     }
 }
